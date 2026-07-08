@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 @Component
 @Slf4j
 public class BotAddedHandleRegistry extends AbstractHandleRegistry {
-    @Value("${bot.id}")
+    @Value("${telegram.bot-id}")
     private long botId;
 
     private final HandlerArgumentResolver handlerArgumentResolver;

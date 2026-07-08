@@ -1,1 +1,4 @@
 ru.tggc.telegrambotspringbootstarter.autoconfigure.TelegramBotAutoConfiguration
+ru.tggc.telegrambotspringbootstarter.autoconfigure.LongPollingAutoConfiguration
+ru.tggc.telegrambotspringbootstarter.autoconfigure.WebhookAutoConfiguration
+ru.tggc.telegrambotspringbootstarter.autoconfigure.LifecycleAutoConfiguration

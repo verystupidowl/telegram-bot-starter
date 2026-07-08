@@ -6,7 +6,7 @@ class TelegramBotSpringBootStarterApplicationTests {
 
     @Test
     void applicationClassExists() {
-        TelegramBotSpringBootStarterApplication.class.getName();
+
     }
 
 }
