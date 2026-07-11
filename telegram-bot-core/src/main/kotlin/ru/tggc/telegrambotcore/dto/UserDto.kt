@@ -2,6 +2,7 @@ package ru.tggc.telegrambotcore.dto
 
 import java.util.*
 
+@JvmRecord
 data class UserDto(
     val userId: Long,
     val username: String
