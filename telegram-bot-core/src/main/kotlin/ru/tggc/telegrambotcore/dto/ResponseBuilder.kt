@@ -43,11 +43,11 @@ class ResponseBuilder internal constructor(private var chatId: Long?) {
         }
     }
 
-    fun photos(photos: MutableCollection<PhotoDto>): ResponseBuilder = apply {
+    fun photos(photos: Collection<PhotoDto>): ResponseBuilder = apply {
         photos.forEach { this.photo(it) }
     }
 
-    fun edit(photos: MutableList<PhotoDto>, messageId: Int): ResponseBuilder = apply {
+    fun edit(photos: List<PhotoDto>, messageId: Int): ResponseBuilder = apply {
         if (photos.isNotEmpty()) {
             actions += Response.create { it.executeAsync(DeleteMessage(chatId, messageId)) }
             photos(photos)

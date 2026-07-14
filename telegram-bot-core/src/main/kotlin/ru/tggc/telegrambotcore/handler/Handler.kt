@@ -5,6 +5,7 @@ import ru.tggc.telegrambotcore.dto.PhotoDto
 import ru.tggc.telegrambotcore.dto.Response
 import ru.tggc.telegrambotcore.dto.ResponseBuilder
 
+@Deprecated(message = "Use ctx instead")
 abstract class Handler() {
     fun sendSimplePhoto(photo: PhotoDto): Response {
         return ResponseBuilder.create()

@@ -19,7 +19,7 @@ class Utils {
         fun <T, R> getOrNull(t: T?, function: Function<T?, R?>): R? = t?.let { function.apply(it) }
 
         @JvmStatic
-        fun <T, R> getOrElse(t: T?, function: Function<T?, R?>, orElse: R?): R? =
+        fun <T, R> getOrElse(t: T?, function: Function<T?, R?>, orElse: R): R =
             t?.let { function.apply(it) } ?: orElse
 
         @JvmStatic
