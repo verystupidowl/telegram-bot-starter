@@ -1,4 +1,4 @@
 package ru.tggc.telegrambotcore.dto
 
 @JvmRecord
-data class FileDto(val url: String? = null, val type: FileType? = null)
+data class FileDto(val url: String, val type: FileType)

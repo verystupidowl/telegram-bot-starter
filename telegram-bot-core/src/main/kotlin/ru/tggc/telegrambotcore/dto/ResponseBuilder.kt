@@ -16,7 +16,7 @@ class ResponseBuilder internal constructor(private var chatId: Long?) {
     }
 
 
-    fun addAll(action: MutableCollection<Response>): ResponseBuilder = apply {
+    fun addAll(action: Collection<Response>): ResponseBuilder = apply {
         this.actions.addAll(action)
     }
 

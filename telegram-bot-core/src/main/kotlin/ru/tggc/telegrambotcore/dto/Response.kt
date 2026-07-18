@@ -15,9 +15,9 @@ import java.util.function.Consumer
 
 fun interface Response {
     fun andThen(after: Response): Response =
-        Response { bot: TelegramBot ->
-            this.accept(bot)
-            after.accept(bot)
+        Response {
+            this.accept(it)
+            after.accept(it)
         }
 
     fun accept(bot: TelegramBot): CompletableFuture<Void?>
@@ -30,7 +30,7 @@ fun interface Response {
         private val botResponseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         @JvmStatic
-        fun <Rq, Rs> ofAll(requests: MutableList<Rq>): Response where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
+        fun <Rq, Rs> ofAll(requests: List<Rq>): Response where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
             Response { bot ->
                 botResponseScope.future {
                     requests.forEach { bot.executeAsync(it) }
@@ -67,7 +67,7 @@ fun interface Response {
             }
 
         @JvmStatic
-        fun ofAllConsumers(consumers: MutableList<Consumer<TelegramBot>>): Response =
+        fun ofAllConsumers(consumers: List<Consumer<TelegramBot>>): Response =
             Response { bot ->
                 botResponseScope.future {
                     consumers.forEach { it.accept(bot) }
@@ -76,7 +76,7 @@ fun interface Response {
             }
 
         @JvmStatic
-        fun ofAllResponses(responses: MutableList<Response>): Response =
+        fun ofAllResponses(responses: List<Response>): Response =
             Response { bot: TelegramBot ->
                 botResponseScope.future {
                     responses.forEach { it.accept(bot) }

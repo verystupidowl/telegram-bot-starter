@@ -39,12 +39,16 @@ data class UpdateContext(
         return when (first) {
             is PhotoDto -> {
                 @Suppress("UNCHECKED_CAST")
-                ResponseBuilder.to(chatId).photos(entities as List<PhotoDto>).build()
+                ResponseBuilder.to(chatId)
+                    .photos(entities as List<PhotoDto>)
+                    .build()
             }
 
             is String -> {
                 @Suppress("UNCHECKED_CAST")
-                ResponseBuilder.to(chatId).messages(entities as List<String>).build()
+                ResponseBuilder.to(chatId)
+                    .messages(entities as List<String>)
+                    .build()
             }
 
             else -> throw IllegalArgumentException("Unsupported list element type: ${first.javaClass}")
@@ -63,7 +67,7 @@ data class UpdateContext(
 
 
     @JvmOverloads
-    fun edit(photos: MutableList<PhotoDto>, messageId: Int = this.messageId): Response = ResponseBuilder.create()
+    fun edit(photos: List<PhotoDto>, messageId: Int = this.messageId): Response = ResponseBuilder.create()
         .edit(photos, messageId)
         .build()
 
