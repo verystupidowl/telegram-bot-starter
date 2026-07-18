@@ -1,5 +1,6 @@
 package ru.tggc.telegrambotcore.formatter
 
+@Deprecated("Use TelegramMessages instead", ReplaceWith("TelegramMessages"))
 interface FormatService {
-    fun getMessage(key: MsgKey, vararg args: Any?): String
+    fun get(key: MsgKey, vararg args: Any): String
 }

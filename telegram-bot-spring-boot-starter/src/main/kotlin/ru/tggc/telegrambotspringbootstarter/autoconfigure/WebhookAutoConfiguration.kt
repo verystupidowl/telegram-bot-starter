@@ -14,11 +14,11 @@ import ru.tggc.telegrambotspringbootstarter.runner.TelegramBotRunner
 @AutoConfiguration(after = [TelegramBotAutoConfiguration::class])
 @ConditionalOnProperty(prefix = "telegram", name = ["mode"], havingValue = "webhook", matchIfMissing = true)
 @Slf4j
-class WebhookAutoConfiguration {
+open class WebhookAutoConfiguration {
     private val log = KotlinLogging.logger {}
 
     @Bean
-    fun telegramBotRunner(bot: TelegramBot, telegramProperties: TelegramProperties): TelegramBotRunner =
+    open fun telegramBotRunner(bot: TelegramBot, telegramProperties: TelegramProperties): TelegramBotRunner =
         TelegramBotRunner {
             log.info { "Starting telegram bot via webhook" }
             val response = bot.execute(

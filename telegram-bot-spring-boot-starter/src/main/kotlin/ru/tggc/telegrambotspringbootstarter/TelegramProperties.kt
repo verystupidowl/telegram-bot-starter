@@ -27,7 +27,14 @@ data class TelegramProperties(
     /**
      * Bot's Telegram ID
      */
-    var botId: String? = null
+    var botId: String? = null,
+
+    /**
+     * List of messages base names
+     */
+    var baseNames: List<String> = listOf(
+        "telegram/messages/messages"
+    )
 ) {
 
     enum class Mode {
