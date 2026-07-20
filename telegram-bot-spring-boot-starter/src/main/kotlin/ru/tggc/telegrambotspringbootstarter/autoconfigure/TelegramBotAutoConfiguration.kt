@@ -7,10 +7,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.core.io.ResourceLoader
-import ru.tggc.telegrambotcore.messages.MessageLoader
-import ru.tggc.telegrambotcore.messages.TelegramMessages
-import ru.tggc.telegrambotcore.messages.YamlTelegramMessages
+import ru.tggc.telegrambotcore.formatter.MessageLoader
+import ru.tggc.telegrambotcore.formatter.FormatService
+import ru.tggc.telegrambotcore.formatter.YamlFormatService
 import ru.tggc.telegrambotspringbootstarter.TelegramProperties
+import tools.jackson.databind.ObjectMapper
 
 @AutoConfiguration
 @ComponentScan("ru.tggc.telegrambotcore")
@@ -29,11 +30,12 @@ open class TelegramBotAutoConfiguration {
     open fun telegramMessages(
         properties: TelegramProperties,
         resourceLoader: ResourceLoader,
-        messageLoader: MessageLoader
-    ): TelegramMessages {
+        messageLoader: MessageLoader,
+        mapper: ObjectMapper
+    ): FormatService {
         val messages = messageLoader.load(properties.baseNames)
 
-        return YamlTelegramMessages(messages)
+        return YamlFormatService(messages, mapper)
     }
 
 }
