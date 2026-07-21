@@ -11,5 +11,4 @@ class LifecycleAutoConfiguration {
     @Bean
     fun telegramLifecycle(telegramBotRunner: TelegramBotRunner): TelegramLifecycle =
         TelegramLifecycle(telegramBotRunner)
-
 }

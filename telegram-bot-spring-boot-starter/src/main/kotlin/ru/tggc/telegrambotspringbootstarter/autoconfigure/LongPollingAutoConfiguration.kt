@@ -14,11 +14,11 @@ import ru.tggc.telegrambotspringbootstarter.runner.TelegramBotRunner
 @Slf4j
 @AutoConfiguration(after = [TelegramBotAutoConfiguration::class])
 @ConditionalOnProperty(prefix = "telegram", name = ["mode"], havingValue = "longpolling", matchIfMissing = true)
-class LongPollingAutoConfiguration {
+open class LongPollingAutoConfiguration {
     private val log = KotlinLogging.logger {}
 
     @Bean
-    fun telegramBotRunner(telegramBot: TelegramBot, receiver: TelegramBotReceiver): TelegramBotRunner =
+    open fun telegramBotRunner(telegramBot: TelegramBot, receiver: TelegramBotReceiver): TelegramBotRunner =
         TelegramBotRunner {
             log.info { "Starting telegram bot via longPolling" }
             telegramBot.setUpdatesListener { updates: MutableList<Update> ->

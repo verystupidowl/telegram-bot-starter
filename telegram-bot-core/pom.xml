@@ -125,5 +125,9 @@
             <artifactId>kotlinx-coroutines-core</artifactId>
             <version>1.10.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
     </dependencies>
 </project>
