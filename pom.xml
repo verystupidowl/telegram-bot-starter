@@ -33,7 +33,7 @@
     <packaging>pom</packaging>
     <properties>
         <java.version>21</java.version>
-        <telegram.version>10.0.0</telegram.version>
+        <telegram.version>10.1.0</telegram.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <caffeine.version>3.1.8</caffeine.version>
         <lombok.version>1.18.40</lombok.version>

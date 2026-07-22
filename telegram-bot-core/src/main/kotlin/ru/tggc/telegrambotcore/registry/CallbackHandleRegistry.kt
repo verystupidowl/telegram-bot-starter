@@ -31,7 +31,7 @@ class CallbackHandleRegistry(
 ) {
     private val log = KotlinLogging.logger {}
 
-    override val handleAnnotation: Class<out Annotation?>?
+    override val handleAnnotation: Class<out Annotation?>
         get() = CallbackHandle::class.java
 
     override fun dispatch(update: Update): Response? {

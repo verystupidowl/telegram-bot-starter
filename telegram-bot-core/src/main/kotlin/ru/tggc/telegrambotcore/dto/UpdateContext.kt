@@ -1,16 +1,25 @@
 package ru.tggc.telegrambotcore.dto
 
+import com.pengrad.telegrambot.model.Message
+import com.pengrad.telegrambot.model.request.ChatAction
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup
+import com.pengrad.telegrambot.request.DeleteMessage
+import com.pengrad.telegrambot.request.SendChatAction
+import com.pengrad.telegrambot.request.SendMessage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.apache.logging.log4j.util.Supplier
+import ru.tggc.telegrambotcore.ext.executeAsync
 import java.util.*
+import java.util.concurrent.CompletableFuture
 
 @JvmRecord
 data class UpdateContext(
     val chatId: Long,
     val userId: Long,
-    val messageId: Int = 0
+    val messageId: Int = 0,
 ) {
     override fun hashCode(): Int = Objects.hash(chatId, userId)
-
 
     override fun equals(other: Any?): Boolean {
         if (other == null || javaClass != other.javaClass) return false
@@ -22,6 +31,14 @@ data class UpdateContext(
         .photo(photo)
         .build()
 
+
+    fun sendWithDelete(photo: PhotoDto): Response {
+        return this.send(photo)
+            .andThen { bot ->
+                bot.execute(DeleteMessage(this.chatId, this.messageId))
+                return@andThen CompletableFuture.completedFuture(null)
+            }
+    }
 
     @JvmOverloads
     fun send(
@@ -56,6 +73,15 @@ data class UpdateContext(
     }
 
     @JvmOverloads
+    fun sendWithDelete(text: String, markup: InlineKeyboardMarkup? = null, chatId: Long = this.chatId): Response {
+        return this.send(text = text, chatId = chatId, markup = markup)
+            .andThen { bot ->
+                bot.execute(DeleteMessage(chatId, this.messageId))
+                return@andThen CompletableFuture.completedFuture(null)
+            }
+    }
+
+    @JvmOverloads
     fun edit(
         caption: String,
         markup: InlineKeyboardMarkup? = null,
@@ -76,10 +102,47 @@ data class UpdateContext(
     fun edit(
         photoUrl: String?,
         caption: String?,
+        markup: InlineKeyboardMarkup? = null,
         chatId: Long = this.chatId,
         messageId: Int = this.messageId,
     ): Response = ResponseBuilder.to(chatId)
-        .editPhoto(messageId, photoUrl, caption)
+        .editPhoto(messageId, photoUrl, caption, markup)
         .build()
 
+    fun edit(photo: PhotoDto): Response = edit(
+        caption = photo.caption!!,
+        markup = photo.markup,
+        chatId = photo.chatId,
+        photoUrl = photo.url
+    )
+
+    @JvmOverloads
+    fun sendWithLoader(textSupplier: Supplier<PhotoDto>, isDelete: Boolean = false, text: String? = null): Response {
+        return Response.create { bot ->
+            var message: Message? = null
+            if (text != null) {
+                message = bot.executeAsync(SendMessage(this.chatId, text)).message()
+            }
+            bot.executeAsync(SendChatAction(this.chatId, ChatAction.upload_photo))
+
+            val photo = withContext(Dispatchers.IO) {
+                textSupplier.get()
+            }
+
+            var send = if (isDelete) {
+                sendWithDelete(photo)
+            } else {
+                send(photo)
+            }
+
+            if (message != null) {
+                send = send.andThen { bot ->
+                    bot.execute(DeleteMessage(chatId, message.messageId()))
+                    CompletableFuture.completedFuture(null)
+                }
+            }
+
+            send.accept(bot)
+        }
+    }
 }

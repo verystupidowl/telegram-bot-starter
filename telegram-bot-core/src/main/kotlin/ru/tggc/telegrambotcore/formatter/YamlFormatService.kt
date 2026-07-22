@@ -49,6 +49,15 @@ class YamlFormatService(
         return list.random()
     }
 
+    override fun exists(key: MsgKey): Boolean {
+        try {
+            find(key.key)
+            return true
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
 
     private fun find(key: String): Any {
         var current: Any = messages

@@ -9,9 +9,12 @@ import ru.tggc.telegrambotcore.util.SendUtils
 
 suspend fun <Rq, Rs> TelegramBot.executeAsync(request: Rq): Rs where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
     withContext(Dispatchers.IO) {
-        val response = execute(request)
-
-        SendUtils.checkRequestAndResponse(response)
-
-        response
+        try {
+            val response = execute(request)
+            SendUtils.checkRequestAndResponse(response)
+            response
+        } catch (e: Exception) {
+            println(e.message)
+            throw e
+        }
     }

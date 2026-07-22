@@ -14,5 +14,4 @@ class CtxResolver : ParameterResolver<UpdateContext?> {
         ctx.from!!.id(),
         ctx.messageId
     )
-
 }

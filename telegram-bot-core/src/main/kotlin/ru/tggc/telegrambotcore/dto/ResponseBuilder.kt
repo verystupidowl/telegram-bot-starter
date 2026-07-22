@@ -2,8 +2,10 @@ package ru.tggc.telegrambotcore.dto
 
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup
+import com.pengrad.telegrambot.model.request.InputMediaPhoto
 import com.pengrad.telegrambot.request.DeleteMessage
 import com.pengrad.telegrambot.request.EditMessageCaption
+import com.pengrad.telegrambot.request.EditMessageMedia
 import com.pengrad.telegrambot.request.SendMessage
 import com.pengrad.telegrambot.request.SendPhoto
 import ru.tggc.telegrambotcore.ext.executeAsync
@@ -64,14 +66,16 @@ class ResponseBuilder internal constructor(private var chatId: Long?) {
         }
     }
 
-    fun editPhoto(messageId: Int, photoUrl: String?, caption: String?): ResponseBuilder = apply {
-        actions += Response.create { it.executeAsync(DeleteMessage(chatId, messageId)) }
-        val photo = PhotoDto(
-            url = photoUrl,
-            caption = caption,
-            chatId = chatId!!
-        )
-        photo(photo)
+    fun editPhoto(
+        messageId: Int,
+        photoUrl: String?,
+        caption: String?,
+        markup: InlineKeyboardMarkup? = null
+    ): ResponseBuilder = apply {
+        val media = InputMediaPhoto(photoUrl).caption(caption)
+        val emm = EditMessageMedia(chatId, messageId, media)
+        markup?.let { emm.replyMarkup(it) }
+        actions += Response.create { bot -> bot.executeAsync(emm) }
     }
 
     fun build(): Response = Response.ofAllResponses(actions)

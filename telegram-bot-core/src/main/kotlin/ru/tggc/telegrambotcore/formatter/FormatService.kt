@@ -10,4 +10,6 @@ interface FormatService {
     fun <T : Any> getList(key: MsgKey, clazz: Class<T>): List<T>
 
     fun <T : Any> randomObject(key: MsgKey, clazz: Class<T>): T
+
+    fun exists(key: MsgKey): Boolean
 }
