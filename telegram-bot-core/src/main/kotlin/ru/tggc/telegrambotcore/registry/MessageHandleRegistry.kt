@@ -70,7 +70,7 @@ class MessageHandleRegistry(
             }
             return response
         }
-        log.info { "message ${message.text()} from ${from.username()}" }
+        log.debug { "message ${message.text()} from ${from.username()}" }
 
         val template = method.getAnnotation(MessageHandle::class.java)!!.value
         val matcher = handlerMap[template]?.pattern?.matcher(template)

@@ -45,7 +45,7 @@ class CommandRegistry(
         val from = message.from()
 
         saveOrUpdateUser(from, chat)
-        log.info { "message ${message.text()} from ${from.username()}" }
+        log.debug { "message ${message.text()} from ${from.username()}" }
 
         val template = method.getAnnotation(CommandHandle::class.java).value
         val matcher = handlerMap[template]?.pattern?.matcher(command)

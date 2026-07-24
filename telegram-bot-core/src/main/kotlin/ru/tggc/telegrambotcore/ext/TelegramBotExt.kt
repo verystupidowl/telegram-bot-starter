@@ -1,3 +1,5 @@
+@file:JvmName("TelegramBotUtils")
+
 package ru.tggc.telegrambotcore.ext
 
 import com.pengrad.telegrambot.TelegramBot
@@ -12,7 +14,7 @@ suspend fun <Rq, Rs> TelegramBot.executeAsync(request: Rq): Rs where Rq : BaseRe
         try {
             val response = execute(request)
             SendUtils.checkRequestAndResponse(response)
-            response
+            return@withContext response
         } catch (e: Exception) {
             println(e.message)
             throw e

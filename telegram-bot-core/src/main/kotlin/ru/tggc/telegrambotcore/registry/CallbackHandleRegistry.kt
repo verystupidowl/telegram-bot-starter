@@ -61,7 +61,7 @@ class CallbackHandleRegistry(
             val sendMessageToAdmin = SendMessage(ADMIN_ID, message)
             return Response.ofAll(sendMessageToAdmin, sendMessageToUser)
         }
-        log.info { "callback ${query.data()} from ${from.username()}" }
+        log.debug { "callback ${query.data()} from ${from.username()}" }
 
         val template = method.getAnnotation(CallbackHandle::class.java)!!.value
         val matcher = handlerMap[template]?.pattern?.matcher(data)

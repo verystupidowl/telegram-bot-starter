@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.pengrad.telegrambot.model.User
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
+import ru.tggc.telegrambotcore.dto.RateLimitDto
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -44,7 +45,7 @@ class UserRateLimiterService {
         return locked!!.get()
     }
 
-    fun checkRateLimit(from: User): Optional<String> {
+    fun checkRateLimit(from: User): Optional<RateLimitDto> {
         val count = countOfUpdates.getIfPresent(from.id())
 
         if (count != null && count > MAX_REQUESTS) {
@@ -54,16 +55,17 @@ class UserRateLimiterService {
                 .map { ex -> ex.ageOf(from.id(), TimeUnit.SECONDS) }
                 .orElse(OptionalLong.empty())
 
-            val text = if (ageOpt.isPresent)
-                "Слишком много запросов, попробуй снова через ${MAX_REQUESTS - ageOpt.getAsLong()} c"
-            else
-                "Слишком много запросов"
-
-            return Optional.of<String>(text)
+            return if (ageOpt.isPresent) {
+                val retryAfter = MAX_REQUESTS - ageOpt.getAsLong()
+                val text = "Слишком много запросов, попробуй снова через $retryAfter c"
+                Optional.of<RateLimitDto>(RateLimitDto(text, retryAfter))
+            } else {
+                Optional.of<RateLimitDto>(RateLimitDto("Слишком много запросов"))
+            }
         }
 
         countOfUpdates.put(from.id(), if (count == null) 1 else count + 1)
-        return Optional.empty<String>()
+        return Optional.empty<RateLimitDto>()
     }
 
     companion object {

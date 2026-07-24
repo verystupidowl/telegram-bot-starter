@@ -3,6 +3,7 @@ package ru.tggc.telegrambotcore.registry
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.model.Chat
 import com.pengrad.telegrambot.model.User
+import com.pengrad.telegrambot.response.BaseResponse
 import jakarta.annotation.PostConstruct
 import lombok.extern.slf4j.Slf4j
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
@@ -52,13 +53,13 @@ abstract class AbstractHandleRegistry(
             val response = method.invoke(bean, *args) as Response?
             return response?.andThen { _: TelegramBot ->
                 rateLimiter.unlock(from.id())
-                CompletableFuture.completedFuture<Void>(null)
+                CompletableFuture.completedFuture<BaseResponse>(null)
             }
         } catch (e: Exception) {
             return exceptionHandler.handleException(e, chat, from)
                 .andThen { _: TelegramBot ->
                     rateLimiter.unlock(from.id())
-                    CompletableFuture.completedFuture<Void>(null)
+                    CompletableFuture.completedFuture<BaseResponse>(null)
                 }
         }
     }

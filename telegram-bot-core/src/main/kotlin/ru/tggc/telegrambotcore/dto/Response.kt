@@ -6,12 +6,12 @@ import com.pengrad.telegrambot.response.BaseResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.future.await
 import kotlinx.coroutines.future.future
 import ru.tggc.telegrambotcore.ext.executeAsync
 import java.util.concurrent.CompletableFuture
 import java.util.function.BiConsumer
 import java.util.function.Consumer
+import java.util.function.Function
 
 fun interface Response {
     fun andThen(after: Response): Response =
@@ -20,11 +20,7 @@ fun interface Response {
             after.accept(it)
         }
 
-    fun accept(bot: TelegramBot): CompletableFuture<Void?>
-
-    suspend fun acceptAsync(bot: TelegramBot) {
-        accept(bot).await()
-    }
+    fun accept(bot: TelegramBot): CompletableFuture<BaseResponse?>
 
     companion object {
         private val botResponseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -52,8 +48,7 @@ fun interface Response {
         fun <Rq, Rs> of(request: Rq): Response where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
             Response { bot ->
                 botResponseScope.future {
-                    bot.executeAsync(request)
-                    return@future null
+                    return@future bot.executeAsync(request)
                 }
             }
 
@@ -63,6 +58,13 @@ fun interface Response {
                 botResponseScope.future {
                     consumer.accept(bot)
                     return@future null
+                }
+            }
+
+        fun of(function: Function<TelegramBot, BaseResponse>): Response =
+            Response { bot ->
+                botResponseScope.future {
+                    return@future function.apply(bot)
                 }
             }
 
@@ -94,11 +96,10 @@ fun interface Response {
             }
 
         @JvmStatic
-        fun create(block: suspend (TelegramBot) -> Unit): Response =
+        fun create(block: suspend (TelegramBot) -> BaseResponse): Response =
             Response { bot ->
                 botResponseScope.future {
-                    block(bot)
-                    return@future null
+                    return@future block(bot)
                 }
             }
 

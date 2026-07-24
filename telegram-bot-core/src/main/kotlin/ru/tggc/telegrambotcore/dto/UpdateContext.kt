@@ -7,6 +7,7 @@ import com.pengrad.telegrambot.request.DeleteMessage
 import com.pengrad.telegrambot.request.SendChatAction
 import com.pengrad.telegrambot.request.SendMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.util.Supplier
 import ru.tggc.telegrambotcore.ext.executeAsync
@@ -94,7 +95,7 @@ data class UpdateContext(
 
     @JvmOverloads
     fun edit(photos: List<PhotoDto>, messageId: Int = this.messageId): Response = ResponseBuilder.create()
-        .edit(photos, messageId)
+        .edit(photos, messageId, chatId = this.chatId)
         .build()
 
 
@@ -115,6 +116,21 @@ data class UpdateContext(
         chatId = photo.chatId,
         photoUrl = photo.url
     )
+
+    @JvmOverloads
+    fun delete(messageId: Int = this.messageId, chatId: Long = this.chatId): Response =
+        ResponseBuilder.to(chatId)
+            .delete(messageId = messageId)
+            .build()
+
+    @JvmOverloads
+    fun sendNonNull(text: String, markup: InlineKeyboardMarkup? = null): Response {
+        return Response.create { bot ->
+            val sm = SendMessage(this.chatId, text)
+            markup?.let { sm.replyMarkup = it }
+            bot.executeAsync(sm)
+        }
+    }
 
     @JvmOverloads
     fun sendWithLoader(textSupplier: Supplier<PhotoDto>, isDelete: Boolean = false, text: String? = null): Response {
@@ -142,7 +158,7 @@ data class UpdateContext(
                 }
             }
 
-            send.accept(bot)
+            send.accept(bot).await()!!
         }
     }
 }
