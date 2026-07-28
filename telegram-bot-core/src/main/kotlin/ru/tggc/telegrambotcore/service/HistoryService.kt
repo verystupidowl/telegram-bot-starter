@@ -8,8 +8,6 @@ import java.util.function.Consumer
 
 interface HistoryService {
     fun setHistory(ctx: UpdateContext, historyType: HistoryKey, failAction: Consumer<DialogSession>)
-    fun setHistory(ctx: UpdateContext, historyType: HistoryKey)
-    fun setHistory(ctx: UpdateContext, historyType: HistoryKey, key: String, value: String)
     fun putData(ctx: UpdateContext, key: String, value: String)
     fun isEmpty(ctx: UpdateContext): Boolean
     fun getData(ctx: UpdateContext, key: String): Optional<String>
