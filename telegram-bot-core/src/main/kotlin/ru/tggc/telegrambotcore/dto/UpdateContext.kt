@@ -3,16 +3,21 @@ package ru.tggc.telegrambotcore.dto
 import com.pengrad.telegrambot.model.Message
 import com.pengrad.telegrambot.model.request.ChatAction
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup
+import com.pengrad.telegrambot.model.request.ParseMode
 import com.pengrad.telegrambot.request.DeleteMessage
 import com.pengrad.telegrambot.request.SendChatAction
 import com.pengrad.telegrambot.request.SendMessage
+import com.pengrad.telegrambot.response.SendResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.util.Supplier
+import ru.tggc.telegrambotcore.ext.bindToUser
 import ru.tggc.telegrambotcore.ext.executeAsync
+import ru.tggc.telegrambotcore.service.HistoryService
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.function.Consumer
 
 @JvmRecord
 data class UpdateContext(
@@ -20,6 +25,11 @@ data class UpdateContext(
     val userId: Long,
     val messageId: Int = 0,
 ) {
+    companion object {
+        @JvmStatic
+        internal lateinit var historyService: HistoryService
+    }
+
     override fun hashCode(): Int = Objects.hash(chatId, userId)
 
     override fun equals(other: Any?): Boolean {
@@ -130,6 +140,50 @@ data class UpdateContext(
             markup?.let { sm.replyMarkup = it }
             bot.executeAsync(sm)
         }
+    }
+
+    @JvmOverloads
+    fun ask(
+        text: String,
+        historyKey: HistoryKey,
+        markup: InlineKeyboardMarkup? = null,
+        failAction: Consumer<DialogSession> = Consumer {}
+    ): Response {
+        return Response.create { bot ->
+            try {
+                val sm = SendMessage(this.chatId, text).parseMode(ParseMode.HTML)
+                markup?.let { sm.replyMarkup = markup.bindToUser(userId) }
+
+                val sendResponse: SendResponse = bot.executeAsync(sm)
+                val promptMessageId = sendResponse.message().messageId()
+                println("promptMessageId before sendMessageId: $promptMessageId")
+
+                historyService.setHistory(this, historyKey, promptMessageId, failAction)
+
+                return@create sendResponse
+            } catch (e: Exception) {
+                e.printStackTrace()
+                throw e
+            }
+        }
+    }
+
+    fun cleanPromptAndInput(): Response {
+        val promptMessageId = historyService.getPromptMessageId(this)
+
+        historyService.removeFromHistory(this)
+
+        val builder = ResponseBuilder.to(this.chatId)
+
+        if (promptMessageId != null) {
+            builder.delete(chatId = this.chatId, messageId = promptMessageId)
+        }
+
+        if (this.messageId > 0) {
+            builder.delete(chatId = this.chatId, messageId = this.messageId)
+        }
+
+        return builder.build()
     }
 
     @JvmOverloads

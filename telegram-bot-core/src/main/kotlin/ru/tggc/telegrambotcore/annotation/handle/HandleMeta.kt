@@ -1,31 +1,37 @@
 package ru.tggc.telegrambotcore.annotation.handle
 
+import ru.tggc.telegrambotcore.dto.Access
 import ru.tggc.telegrambotcore.dto.UserRole
 
 data class HandleMeta(
     val requiredRoles: Array<UserRole> = emptyArray<UserRole>(),
     val canPublic: Boolean = true,
-    val canPrivate: Boolean = true
+    val canPrivate: Boolean = true,
+    val access: Access = Access.OWNER_ONLY,
 ) {
     companion object {
         fun from(a: CallbackHandle): HandleMeta {
-            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate)
+            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate, a.access)
         }
 
         fun from(a: MessageHandle): HandleMeta {
-            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate)
+            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate, a.access)
         }
 
         fun from(a: PhotoHandle): HandleMeta {
-            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate)
+            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate, a.access)
         }
 
         fun from(a: CommandHandle): HandleMeta {
-            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate)
+            return HandleMeta(a.requiredRoles, a.canPublic, a.canPrivate, a.access)
         }
 
-        fun fromDefault(): HandleMeta {
-            return HandleMeta()
+        fun from(a: TextHandle): HandleMeta {
+            return HandleMeta(access = a.access)
+        }
+
+        fun from(): HandleMeta {
+            return HandleMeta(access = Access.ANYONE)
         }
     }
 

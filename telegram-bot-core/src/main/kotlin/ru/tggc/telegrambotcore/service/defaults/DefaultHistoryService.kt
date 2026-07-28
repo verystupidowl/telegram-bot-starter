@@ -2,6 +2,7 @@ package ru.tggc.telegrambotcore.service.defaults
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import ru.tggc.telegrambotcore.dto.DialogSession
 import ru.tggc.telegrambotcore.dto.HistoryKey
@@ -14,20 +15,58 @@ import java.util.function.Function
 
 @Service
 open class DefaultHistoryService : HistoryService {
-    private val cache: Cache<UpdateContext, DialogSession?> = Caffeine.newBuilder()
-        .expireAfterWrite(Duration.ofMinutes(3))
-        .maximumSize(10000)
-        .build<UpdateContext, DialogSession?>()
+    init {
+        UpdateContext.historyService = this
+    }
 
-    override fun setHistory(
-        ctx: UpdateContext,
-        historyType: HistoryKey,
-        failAction: Consumer<DialogSession>
-    ) {
+    companion object {
+        private val cache: Cache<UpdateContext, DialogSession?> = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(3))
+            .maximumSize(10000)
+            .build<UpdateContext, DialogSession?>()
+        private val log = KotlinLogging.logger {}
+    }
+
+    override fun setHistory(ctx: UpdateContext, historyType: HistoryKey, failAction: Consumer<DialogSession>) {
         val prev = cache.asMap().putIfAbsent(ctx, DialogSession(historyType, HashMap<String, String>()))
         if (prev != null) {
             failAction.accept(prev)
         }
+    }
+
+    override fun setHistory(
+        ctx: UpdateContext,
+        historyType: HistoryKey,
+        promptMessageId: Int?,
+        failAction: Consumer<DialogSession>
+    ) {
+        val existingSession = cache.getIfPresent(ctx)
+        if (existingSession != null) {
+            failAction.accept(existingSession)
+            return
+        }
+
+        val newSession = DialogSession(
+            state = historyType,
+            promptMessageId = promptMessageId,
+            data = HashMap()
+        )
+
+        cache.put(ctx, newSession)
+
+        log.info { "History saved for user ${ctx.userId}: state=${historyType.name()}, promptId=$promptMessageId" }
+        log.info { cache.asMap() }
+        log.info { this }
+    }
+
+    override fun getSession(ctx: UpdateContext): DialogSession? {
+        return cache.getIfPresent(ctx)
+    }
+
+    override fun getPromptMessageId(ctx: UpdateContext): Int? {
+        println(cache.asMap())
+        log.info { this }
+        return cache.getIfPresent(ctx)?.promptMessageId
     }
 
     override fun putData(ctx: UpdateContext, key: String, value: String) {

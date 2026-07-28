@@ -9,5 +9,5 @@ import java.lang.reflect.Method
 class BotAddedAnnotationProvider : AnnotationProvider {
     override fun supports(m: Method): Boolean = m.isAnnotationPresent(BotAddedHandle::class.java)
 
-    override fun extractMeta(m: Method): HandleMeta? = HandleMeta.fromDefault()
+    override fun extractMeta(m: Method): HandleMeta = HandleMeta.from()
 }

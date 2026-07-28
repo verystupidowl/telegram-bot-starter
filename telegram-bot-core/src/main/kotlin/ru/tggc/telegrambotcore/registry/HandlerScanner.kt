@@ -4,7 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import lombok.SneakyThrows
 import org.springframework.beans.factory.ListableBeanFactory
 import org.springframework.stereotype.Component
-import ru.tggc.telegrambotcore.annotation.handle.DefaultMessageHandle
+import ru.tggc.telegrambotcore.annotation.handle.TextHandle
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
@@ -48,7 +48,7 @@ class HandlerScanner(private val beanFactory: ListableBeanFactory) {
                     handlers[key] = handler
                 }
 
-                if (method.isAnnotationPresent(DefaultMessageHandle::class.java)) {
+                if (method.isAnnotationPresent(TextHandle::class.java)) {
                     check(defaultMethod == null) { "Должен быть только один @DefaultMessageHandle" }
 
                     defaultMethod = method

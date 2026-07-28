@@ -10,7 +10,6 @@ import ru.tggc.telegrambotcore.dto.AccessResult
 import ru.tggc.telegrambotcore.dto.Response
 import ru.tggc.telegrambotcore.service.UserService
 import java.lang.reflect.Method
-import java.util.function.Consumer
 
 @Component
 @Order(1)
@@ -26,9 +25,7 @@ class RoleAccessChecker(
         }
 
         return AccessResult.deny(
-            Response.of(Consumer {
-                SendMessage(chat.id(), "У вас недостаточно прав для этой команды")
-            })
+            Response.of(SendMessage(chat.id(), "У вас недостаточно прав для этой команды"))
         )
     }
 }

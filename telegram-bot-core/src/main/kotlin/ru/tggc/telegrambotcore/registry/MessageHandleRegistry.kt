@@ -29,7 +29,7 @@ class MessageHandleRegistry(
 ) : AbstractHandleRegistry(handlerScanner, rateLimiter, exceptionHandler, globalAccessChecker, userService) {
     private val log = KotlinLogging.logger { }
 
-    override val handleAnnotation: Class<out Annotation?>?
+    override val handleAnnotation: Class<out Annotation?>
         get() = MessageHandle::class.java
 
     override fun dispatch(update: Update): Response? {
@@ -61,7 +61,7 @@ class MessageHandleRegistry(
                         update,
                         chat,
                         from,
-                        0,
+                        message.messageId(),
                         null
                     )
                     val args = handlerArgumentResolver.resolve(defaultMethod!!, handlerCtx)
@@ -79,7 +79,7 @@ class MessageHandleRegistry(
             update,
             chat,
             from,
-            0,
+            message.messageId(),
             matcher
         )
         val args = handlerArgumentResolver.resolve(method, ctx)
