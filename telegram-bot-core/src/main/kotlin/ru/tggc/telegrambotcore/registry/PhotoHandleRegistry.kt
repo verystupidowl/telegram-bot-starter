@@ -25,7 +25,7 @@ class PhotoHandleRegistry(
 ) : AbstractHandleRegistry(handlerScanner, rateLimiter, exceptionHandler, globalAccessChecker, userService) {
     private val log = KotlinLogging.logger {}
 
-    override val handleAnnotation: Class<out Annotation?>?
+    override val handleAnnotation: Class<out Annotation?>
         get() = PhotoHandle::class.java
 
     override fun dispatch(update: Update): Response? {

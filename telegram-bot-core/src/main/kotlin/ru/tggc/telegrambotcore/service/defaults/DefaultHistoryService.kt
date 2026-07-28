@@ -2,7 +2,6 @@ package ru.tggc.telegrambotcore.service.defaults
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import ru.tggc.telegrambotcore.dto.DialogSession
 import ru.tggc.telegrambotcore.dto.HistoryKey
@@ -24,7 +23,6 @@ open class DefaultHistoryService : HistoryService {
             .expireAfterWrite(Duration.ofMinutes(3))
             .maximumSize(10000)
             .build<UpdateContext, DialogSession?>()
-        private val log = KotlinLogging.logger {}
     }
 
     override fun setHistory(ctx: UpdateContext, historyType: HistoryKey, failAction: Consumer<DialogSession>) {
@@ -53,10 +51,6 @@ open class DefaultHistoryService : HistoryService {
         )
 
         cache.put(ctx, newSession)
-
-        log.info { "History saved for user ${ctx.userId}: state=${historyType.name()}, promptId=$promptMessageId" }
-        log.info { cache.asMap() }
-        log.info { this }
     }
 
     override fun getSession(ctx: UpdateContext): DialogSession? {
@@ -64,8 +58,6 @@ open class DefaultHistoryService : HistoryService {
     }
 
     override fun getPromptMessageId(ctx: UpdateContext): Int? {
-        println(cache.asMap())
-        log.info { this }
         return cache.getIfPresent(ctx)?.promptMessageId
     }
 

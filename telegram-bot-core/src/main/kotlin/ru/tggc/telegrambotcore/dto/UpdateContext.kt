@@ -7,6 +7,7 @@ import com.pengrad.telegrambot.model.request.ParseMode
 import com.pengrad.telegrambot.request.DeleteMessage
 import com.pengrad.telegrambot.request.SendChatAction
 import com.pengrad.telegrambot.request.SendMessage
+import com.pengrad.telegrambot.request.SendPhoto
 import com.pengrad.telegrambot.response.SendResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
@@ -38,13 +39,21 @@ data class UpdateContext(
         return chatId == that.chatId && userId == that.userId
     }
 
-    fun send(photo: PhotoDto): Response = ResponseBuilder.create()
-        .photo(photo)
-        .build()
+    fun send(photo: PhotoDto): Response {
+        val photoDto = PhotoDto(
+            url = photo.url,
+            caption = photo.caption,
+            chatId = photo.chatId,
+            markup = photo.markup?.bindToUser(userId),
+        )
+        return ResponseBuilder.create()
+            .photo(photoDto)
+            .build()
+    }
 
 
     fun sendWithDelete(photo: PhotoDto): Response {
-        return this.send(photo)
+        return send(photo)
             .andThen { bot ->
                 bot.execute(DeleteMessage(this.chatId, this.messageId))
                 return@andThen CompletableFuture.completedFuture(null)
@@ -57,7 +66,7 @@ data class UpdateContext(
         markup: InlineKeyboardMarkup? = null,
         chatId: Long = this.chatId
     ): Response = ResponseBuilder.to(chatId)
-        .message(text, markup)
+        .message(text, markup?.bindToUser(userId))
         .build()
 
     @JvmOverloads
@@ -117,7 +126,7 @@ data class UpdateContext(
         chatId: Long = this.chatId,
         messageId: Int = this.messageId,
     ): Response = ResponseBuilder.to(chatId)
-        .editPhoto(messageId, photoUrl, caption, markup)
+        .editPhoto(messageId, photoUrl, caption, markup?.bindToUser(userId))
         .build()
 
     fun edit(photo: PhotoDto): Response = edit(
@@ -137,8 +146,29 @@ data class UpdateContext(
     fun sendNonNull(text: String, markup: InlineKeyboardMarkup? = null): Response {
         return Response.create { bot ->
             val sm = SendMessage(this.chatId, text)
-            markup?.let { sm.replyMarkup = it }
+            markup?.let { sm.replyMarkup = it.bindToUser(userId) }
             bot.executeAsync(sm)
+        }
+    }
+
+    @JvmOverloads
+    fun askPhoto(
+        photoUrl: String,
+        caption: String,
+        historyKey: HistoryKey,
+        markup: InlineKeyboardMarkup? = null,
+        failAction: Consumer<DialogSession> = Consumer {}
+    ): Response {
+        return Response.create { bot ->
+            val sp = SendPhoto(this.chatId, photoUrl).parseMode(ParseMode.HTML).caption(caption)
+            markup?.let { sp.replyMarkup = markup.bindToUser(userId) }
+
+            val sendResponse: SendResponse = bot.executeAsync(sp)
+            val promptMessageId = sendResponse.message().messageId()
+
+            historyService.setHistory(this, historyKey, promptMessageId, failAction)
+
+            return@create sendResponse
         }
     }
 
@@ -150,21 +180,15 @@ data class UpdateContext(
         failAction: Consumer<DialogSession> = Consumer {}
     ): Response {
         return Response.create { bot ->
-            try {
-                val sm = SendMessage(this.chatId, text).parseMode(ParseMode.HTML)
-                markup?.let { sm.replyMarkup = markup.bindToUser(userId) }
+            val sm = SendMessage(this.chatId, text).parseMode(ParseMode.HTML)
+            markup?.let { sm.replyMarkup = markup.bindToUser(userId) }
 
-                val sendResponse: SendResponse = bot.executeAsync(sm)
-                val promptMessageId = sendResponse.message().messageId()
-                println("promptMessageId before sendMessageId: $promptMessageId")
+            val sendResponse: SendResponse = bot.executeAsync(sm)
+            val promptMessageId = sendResponse.message().messageId()
 
-                historyService.setHistory(this, historyKey, promptMessageId, failAction)
+            historyService.setHistory(this, historyKey, promptMessageId, failAction)
 
-                return@create sendResponse
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw e
-            }
+            return@create sendResponse
         }
     }
 

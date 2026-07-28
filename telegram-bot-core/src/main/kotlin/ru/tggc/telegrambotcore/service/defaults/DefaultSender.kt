@@ -68,7 +68,7 @@ open class DefaultSender(
     }
 
     @Recover
-    fun recover(e: RetryableWithSecsException, response: Response?) {
+    open fun recover(e: RetryableWithSecsException, response: Response?) {
         sendToAdmin("Сообщение для пользователя не отправилось с ошибкой " + e.message)
         log.error { "Попытки отправить сообщение исчерпаны $e" }
     }

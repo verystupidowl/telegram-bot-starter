@@ -28,9 +28,6 @@ abstract class AbstractHandleRegistry(
 ) : HandleRegistry {
     protected val handlerMap: MutableMap<String, RegisteredHandler> = ConcurrentHashMap()
 
-    protected var defaultMethod: Method? = null
-    protected var defaultBean: Any? = null
-
     @PostConstruct
     fun init() {
         val data = handlerScanner.scan(this.handleAnnotation, BotHandler::class.java)
@@ -39,8 +36,6 @@ abstract class AbstractHandleRegistry(
             data?.registeredHandlers
                 ?: throw IllegalStateException("Handler not registered for ${this.handleAnnotation}")
         )
-        defaultMethod = data.defaultMethod
-        defaultBean = data.defaultBean
     }
 
     protected fun invokeWithCatch(from: User, method: Method, bean: Any?, args: Array<Any?>, chat: Chat): Response? {

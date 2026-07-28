@@ -77,7 +77,7 @@ class CallbackHandleRegistry(
                     Response.of(
                         AnswerCallbackQuery(query.id())
                             .text("❌ Это меню принадлежит другому игроку!")
-                            .showAlert(true)
+                            .showAlert(false)
                     )
                 )
                 return null

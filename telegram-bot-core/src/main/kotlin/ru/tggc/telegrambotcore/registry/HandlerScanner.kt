@@ -4,8 +4,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import lombok.SneakyThrows
 import org.springframework.beans.factory.ListableBeanFactory
 import org.springframework.stereotype.Component
-import ru.tggc.telegrambotcore.annotation.handle.TextHandle
-import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
@@ -19,9 +17,6 @@ class HandlerScanner(private val beanFactory: ListableBeanFactory) {
             return null
         }
         val handlers: MutableMap<String, RegisteredHandler> = ConcurrentHashMap()
-
-        var defaultMethod: Method? = null
-        var defaultBean: Any? = null
 
         val handlerBeans: MutableMap<String, Any> = beanFactory.getBeansWithAnnotation(handlerClass)
 
@@ -47,20 +42,9 @@ class HandlerScanner(private val beanFactory: ListableBeanFactory) {
 
                     handlers[key] = handler
                 }
-
-                if (method.isAnnotationPresent(TextHandle::class.java)) {
-                    check(defaultMethod == null) { "Должен быть только один @DefaultMessageHandle" }
-
-                    defaultMethod = method
-                    defaultBean = bean
-                }
             }
         }
 
-        return HandlerRegistryData(
-            handlers,
-            defaultMethod,
-            defaultBean
-        )
+        return HandlerRegistryData(handlers)
     }
 }

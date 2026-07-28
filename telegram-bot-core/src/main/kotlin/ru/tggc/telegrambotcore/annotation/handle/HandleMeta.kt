@@ -8,6 +8,8 @@ data class HandleMeta(
     val canPublic: Boolean = true,
     val canPrivate: Boolean = true,
     val access: Access = Access.OWNER_ONLY,
+    val historyType: String? = null,
+    val deleteAfterHandle: Boolean? = null,
 ) {
     companion object {
         fun from(a: CallbackHandle): HandleMeta {
@@ -27,7 +29,7 @@ data class HandleMeta(
         }
 
         fun from(a: TextHandle): HandleMeta {
-            return HandleMeta(access = a.access)
+            return HandleMeta(access = a.access, historyType = a.value, deleteAfterHandle = a.deleteAfterHandle)
         }
 
         fun from(): HandleMeta {

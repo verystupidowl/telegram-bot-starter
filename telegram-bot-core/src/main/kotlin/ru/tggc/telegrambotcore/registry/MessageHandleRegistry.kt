@@ -7,11 +7,9 @@ import org.springframework.stereotype.Component
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
 import ru.tggc.telegrambotcore.annotation.handle.MessageHandle
 import ru.tggc.telegrambotcore.dto.Response
-import ru.tggc.telegrambotcore.dto.UpdateContext
 import ru.tggc.telegrambotcore.exception.ExceptionHandler
 import ru.tggc.telegrambotcore.registry.resolver.HandlerArgumentResolver
 import ru.tggc.telegrambotcore.registry.resolver.HandlerCtx
-import ru.tggc.telegrambotcore.service.HistoryService
 import ru.tggc.telegrambotcore.service.UserRateLimiterService
 import ru.tggc.telegrambotcore.service.UserService
 import java.util.*
@@ -24,7 +22,6 @@ class MessageHandleRegistry(
     exceptionHandler: ExceptionHandler,
     globalAccessChecker: GlobalAccessChecker,
     private val handlerArgumentResolver: HandlerArgumentResolver,
-    private val historyService: HistoryService,
     userService: UserService
 ) : AbstractHandleRegistry(handlerScanner, rateLimiter, exceptionHandler, globalAccessChecker, userService) {
     private val log = KotlinLogging.logger { }
@@ -47,28 +44,12 @@ class MessageHandleRegistry(
 
         val chat = message.chat()
         val from = message.from()
-        var response: Response? = Response.empty()
 
         saveOrUpdateUser(from, chat)
 
         if (method == null) {
-            if (defaultMethod == null) {
-                log.warn { "Unknown message: $text" }
-            } else {
-                val ctx = UpdateContext(chat.id(), from.id(), message.messageId())
-                if (historyService.contains(ctx)) {
-                    val handlerCtx = HandlerCtx(
-                        update,
-                        chat,
-                        from,
-                        message.messageId(),
-                        null
-                    )
-                    val args = handlerArgumentResolver.resolve(defaultMethod!!, handlerCtx)
-                    response = invokeWithCatch(from, defaultMethod!!, defaultBean, args, chat)
-                }
-            }
-            return response
+            log.warn { "Unknown message: $text" }
+            return Response.empty()
         }
         log.debug { "message ${message.text()} from ${from.username()}" }
 
