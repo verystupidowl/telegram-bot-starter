@@ -7,6 +7,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
 import ru.tggc.telegrambotcore.annotation.handle.CallbackHandle
+import ru.tggc.telegrambotcore.dto.Access
 import ru.tggc.telegrambotcore.dto.Response
 import ru.tggc.telegrambotcore.exception.ExceptionHandler
 import ru.tggc.telegrambotcore.registry.resolver.HandlerArgumentResolver
@@ -31,40 +32,64 @@ class CallbackHandleRegistry(
 ) {
     private val log = KotlinLogging.logger {}
 
-    override val handleAnnotation: Class<out Annotation?>?
+    override val handleAnnotation: Class<out Annotation?>
         get() = CallbackHandle::class.java
 
     override fun dispatch(update: Update): Response? {
         val query = update.callbackQuery()
-        telegramBotSender.send(Response.of(AnswerCallbackQuery(query.id())))
+        val rawData = query.data() ?: return null
 
-        val data = query.data()
-        val method = handlerMap.values
-            .map { it.method }
-            .firstOrNull { m: Method? ->
-                val template = m?.getAnnotation(CallbackHandle::class.java)?.value
-                if (template == data) return@firstOrNull true
-                val p = handlerMap[template]!!.pattern
-                p != null && p.matcher(data).matches()
-            }
         val chat = query.maybeInaccessibleMessage().chat()
         val from = query.from()
         val chatId = chat.id()
         val messageId = query.maybeInaccessibleMessage().messageId()
+        val clickerId = from.id()
 
         saveOrUpdateUser(from, chat)
 
+        val parts = rawData.split("#u:")
+        val cleanAction = parts[0]
+        val ownerId = if (parts.size > 1) parts[1].toLongOrNull() else null
+
+        val method = handlerMap.values
+            .map { it.method }
+            .firstOrNull { m: Method? ->
+                val template = m?.getAnnotation(CallbackHandle::class.java)?.value
+                if (template == cleanAction) return@firstOrNull true
+                val p = handlerMap[template]!!.pattern
+                p != null && p.matcher(cleanAction).matches()
+            }
+
         if (method == null) {
-            log.warn { "Unknown callback: $data" }
-            val message = exceptionHandler.buildMessageToAdmin("Unknown callback: $data", chat, from)
+            log.warn { "Unknown callback: $cleanAction (raw: $rawData)" }
+            telegramBotSender.send(Response.of(AnswerCallbackQuery(query.id()))) // Закрываем часики
+            val message = exceptionHandler.buildMessageToAdmin("Unknown callback: $rawData", chat, from)
             val sendMessageToUser = SendMessage(chatId, NOT_IMPLEMENTED_MESSAGE)
             val sendMessageToAdmin = SendMessage(ADMIN_ID, message)
             return Response.ofAll(sendMessageToAdmin, sendMessageToUser)
         }
-        log.info { "callback ${query.data()} from ${from.username()}" }
 
-        val template = method.getAnnotation(CallbackHandle::class.java)!!.value
-        val matcher = handlerMap[template]?.pattern?.matcher(data)
+        val annotation = method.getAnnotation(CallbackHandle::class.java)!!
+        if (annotation.access == Access.OWNER_ONLY && ownerId != null) {
+            if (ownerId != clickerId) {
+                log.warn { "Access denied for user $clickerId on action $cleanAction" }
+                telegramBotSender.send(
+                    Response.of(
+                        AnswerCallbackQuery(query.id())
+                            .text("❌ Это меню принадлежит другому игроку!")
+                            .showAlert(false)
+                    )
+                )
+                return null
+            }
+        }
+
+        telegramBotSender.send(Response.of(AnswerCallbackQuery(query.id())))
+
+        log.debug { "callback $cleanAction from ${from.username()}" }
+
+        val template = annotation.value
+        val matcher = handlerMap[template]?.pattern?.matcher(cleanAction)
 
         val ctx = HandlerCtx(
             update,
@@ -73,6 +98,7 @@ class CallbackHandleRegistry(
             messageId,
             matcher
         )
+
         val args = handlerArgumentResolver.resolve(method, ctx)
         return invokeWithCatch(from, method, handlerMap[template]?.bean, args, chat)
     }

@@ -25,9 +25,7 @@ class RoleAccessChecker(
         }
 
         return AccessResult.deny(
-            Response.of {
-                SendMessage(chat.id(), "У вас недостаточно прав для этой команды")
-            }
+            Response.of(SendMessage(chat.id(), "У вас недостаточно прав для этой команды"))
         )
     }
 }

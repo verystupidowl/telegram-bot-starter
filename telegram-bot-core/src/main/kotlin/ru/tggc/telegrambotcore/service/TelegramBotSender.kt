@@ -9,5 +9,7 @@ interface TelegramBotSender {
 
     fun sendDelayed(task: Consumer<TelegramBot>, delayMillis: Long)
 
+    fun sendDelayed(response: Response, delayMillis: Long)
+
     fun sendToAdmin(text: String)
 }

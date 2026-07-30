@@ -21,18 +21,12 @@ open class WebhookAutoConfiguration {
     open fun telegramBotRunner(bot: TelegramBot, telegramProperties: TelegramProperties): TelegramBotRunner =
         TelegramBotRunner {
             log.info { "Starting telegram bot via webhook" }
-            val response = bot.execute(
-                SetWebhook()
-                    .url(telegramProperties.webhook.url)
-            )
+            val response = bot.execute(SetWebhook().url(telegramProperties.webhook.url))
 
             log.info { "Webhook info $response" }
-            bot.execute(
-                SendMessage(
+            bot.execute(SendMessage(
                     telegramProperties.adminId ?: throw NullPointerException("adminId"),
                     "Webhook has been set $response"
-                )
-            )
+                ))
         }
-
 }

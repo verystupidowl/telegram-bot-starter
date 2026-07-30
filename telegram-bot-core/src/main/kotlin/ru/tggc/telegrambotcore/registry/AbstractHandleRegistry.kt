@@ -3,6 +3,7 @@ package ru.tggc.telegrambotcore.registry
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.model.Chat
 import com.pengrad.telegrambot.model.User
+import com.pengrad.telegrambot.response.BaseResponse
 import jakarta.annotation.PostConstruct
 import lombok.extern.slf4j.Slf4j
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
@@ -27,9 +28,6 @@ abstract class AbstractHandleRegistry(
 ) : HandleRegistry {
     protected val handlerMap: MutableMap<String, RegisteredHandler> = ConcurrentHashMap()
 
-    protected var defaultMethod: Method? = null
-    protected var defaultBean: Any? = null
-
     @PostConstruct
     fun init() {
         val data = handlerScanner.scan(this.handleAnnotation, BotHandler::class.java)
@@ -38,8 +36,6 @@ abstract class AbstractHandleRegistry(
             data?.registeredHandlers
                 ?: throw IllegalStateException("Handler not registered for ${this.handleAnnotation}")
         )
-        defaultMethod = data.defaultMethod
-        defaultBean = data.defaultBean
     }
 
     protected fun invokeWithCatch(from: User, method: Method, bean: Any?, args: Array<Any?>, chat: Chat): Response? {
@@ -52,13 +48,13 @@ abstract class AbstractHandleRegistry(
             val response = method.invoke(bean, *args) as Response?
             return response?.andThen { _: TelegramBot ->
                 rateLimiter.unlock(from.id())
-                CompletableFuture.completedFuture<Void>(null)
+                CompletableFuture.completedFuture<BaseResponse>(null)
             }
         } catch (e: Exception) {
             return exceptionHandler.handleException(e, chat, from)
                 .andThen { _: TelegramBot ->
                     rateLimiter.unlock(from.id())
-                    CompletableFuture.completedFuture<Void>(null)
+                    CompletableFuture.completedFuture<BaseResponse>(null)
                 }
         }
     }
