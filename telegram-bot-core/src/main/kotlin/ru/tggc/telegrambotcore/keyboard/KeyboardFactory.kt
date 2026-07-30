@@ -13,12 +13,9 @@ class KeyboardFactory(keyboardInlineCreators: MutableList<AbstractInlineKeyboard
         return keyboardInlineCreators[key] as AbstractInlineKeyboardCreator<T>
     }
 
-    fun <T> getKeyboardInline(type: KeyboardKey<T>, data: T?): InlineKeyboardMarkup {
+    @JvmOverloads
+    fun <T> getKeyboardInline(type: KeyboardKey<T>, data: T? = null): InlineKeyboardMarkup {
         val creator: AbstractInlineKeyboardCreator<T> = getKeyboardCreator(type)
         return creator.create(data)
-    }
-
-    fun getKeyboardInline(type: KeyboardKey<Void>): InlineKeyboardMarkup {
-        return getKeyboardInline(type, null)
     }
 }

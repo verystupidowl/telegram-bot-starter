@@ -48,7 +48,6 @@ class MessageHandleRegistry(
         saveOrUpdateUser(from, chat)
 
         if (method == null) {
-            log.warn { "Unknown message: $text" }
             return Response.empty()
         }
         log.debug { "message ${message.text()} from ${from.username()}" }

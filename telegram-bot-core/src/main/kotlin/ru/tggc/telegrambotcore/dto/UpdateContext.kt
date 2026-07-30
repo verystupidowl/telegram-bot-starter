@@ -54,11 +54,21 @@ data class UpdateContext(
 
     fun sendWithDelete(photo: PhotoDto): Response {
         return send(photo)
-            .andThen { bot ->
-                bot.execute(DeleteMessage(this.chatId, this.messageId))
-                return@andThen CompletableFuture.completedFuture(null)
-            }
+            .andThen(Response.create { bot ->
+                bot.executeAsync(DeleteMessage(this.chatId, this.messageId))
+            })
     }
+
+    fun sendWithDelete(photos: List<PhotoDto>): Response {
+        return send(photos)
+            .andThen(Response.create { bot -> bot.executeAsync(DeleteMessage(chatId, messageId)) })
+    }
+
+    fun message(text: String): UpdateBuilder =
+        UpdateBuilder(chatId, userId, messageId)
+            .message(text)
+
+    fun photo(photo: String): UpdateBuilder = UpdateBuilder(chatId, userId, messageId).photo(photo)
 
     @JvmOverloads
     fun send(
@@ -108,7 +118,7 @@ data class UpdateContext(
         chatId: Long = this.chatId,
         messageId: Int = this.messageId,
     ): Response = ResponseBuilder.to(chatId)
-        .edit(messageId, caption, markup)
+        .edit(messageId, caption, markup?.bindToUser(userId))
         .build()
 
 
@@ -192,10 +202,8 @@ data class UpdateContext(
         }
     }
 
-    fun cleanPromptAndInput(): Response {
+    fun cleanInput(): Response {
         val promptMessageId = historyService.getPromptMessageId(this)
-
-        historyService.removeFromHistory(this)
 
         val builder = ResponseBuilder.to(this.chatId)
 
@@ -203,11 +211,13 @@ data class UpdateContext(
             builder.delete(chatId = this.chatId, messageId = promptMessageId)
         }
 
-        if (this.messageId > 0) {
-            builder.delete(chatId = this.chatId, messageId = this.messageId)
-        }
-
         return builder.build()
+    }
+
+    fun cleanPromptAndInput(): Response {
+        historyService.removeFromHistory(this)
+        val response = cleanInput()
+        return response
     }
 
     @JvmOverloads
