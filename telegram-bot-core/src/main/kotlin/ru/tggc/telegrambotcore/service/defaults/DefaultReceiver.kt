@@ -29,7 +29,7 @@ open class DefaultReceiver(
         }
     }
 
-    fun isNew(update: Update): Boolean {
+    open fun isNew(update: Update): Boolean {
         val id = update.updateId() ?: return true
 
         val exists = cachedUpdates.getIfPresent(id)
