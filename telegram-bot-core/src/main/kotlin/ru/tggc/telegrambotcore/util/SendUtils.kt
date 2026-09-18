@@ -25,7 +25,8 @@ class SendUtils {
                     if (d.contains("timeout")
                         || d.contains("temporarily unavailable")
                         || d.contains("internal server error")
-                        || d.contains("bad gateway")) {
+                        || d.contains("bad gateway")
+                    ) {
                         throw RetryableWithSecsException(description)
                     }
                 }

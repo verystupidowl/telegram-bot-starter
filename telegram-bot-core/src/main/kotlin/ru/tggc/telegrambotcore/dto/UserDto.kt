@@ -5,7 +5,8 @@ import java.util.*
 @JvmRecord
 data class UserDto(
     val userId: Long,
-    val username: String
+    val username: String,
+    val firstname: String,
 ) {
     override fun equals(other: Any?): Boolean {
         if (other == null || javaClass != other.javaClass) return false

@@ -3,6 +3,9 @@ package ru.tggc.telegrambotcore.annotation.handle
 import ru.tggc.telegrambotcore.dto.Access
 import ru.tggc.telegrambotcore.dto.UserRole
 
+/**
+ * Аннотация для метода-хэндлера, отлавливающего команды
+ */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
 annotation class CommandHandle(

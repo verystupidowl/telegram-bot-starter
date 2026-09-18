@@ -60,7 +60,7 @@ abstract class AbstractHandleRegistry(
     }
 
     protected fun saveOrUpdateUser(from: User, chat: Chat) {
-        val userDto = UserDto(from.id(), from.username())
+        val userDto = UserDto(from.id(), from.username(), from.firstName())
         val chatDto = ChatDto(chat.id(), chat.title())
         userService.saveOrUpdate(userDto, chatDto)
     }

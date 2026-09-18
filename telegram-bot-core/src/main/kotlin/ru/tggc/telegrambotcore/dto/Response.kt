@@ -3,9 +3,11 @@ package ru.tggc.telegrambotcore.dto
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.request.BaseRequest
 import com.pengrad.telegrambot.response.BaseResponse
+import com.pengrad.telegrambot.response.SendResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.future.future
 import ru.tggc.telegrambotcore.ext.executeAsync
 import java.util.concurrent.CompletableFuture
@@ -13,11 +15,32 @@ import java.util.function.BiConsumer
 import java.util.function.Consumer
 import java.util.function.Function
 
+/**
+ * Базовый интерфейс для отправки сообщений
+ */
 fun interface Response {
+    /**
+     * Выполнить несколько действий последовательно
+     */
     fun andThen(after: Response): Response =
         Response {
             this.accept(it)
             after.accept(it)
+        }
+
+    /**
+     * Выполнить action с результатом отправки сообщения
+     *
+     * ВАЖНО!!! Возможно только с текстовыми сообщениями
+     */
+    fun then(action: Consumer<SendResponse>): Response =
+        Response { bot ->
+            accept(bot).thenApply { result ->
+                if (result is SendResponse) {
+                    action.accept(result)
+                }
+                result
+            }
         }
 
     fun accept(bot: TelegramBot): CompletableFuture<BaseResponse?>
@@ -29,8 +52,11 @@ fun interface Response {
         fun <Rq, Rs> ofAll(requests: List<Rq>): Response where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
             Response { bot ->
                 botResponseScope.future {
-                    requests.forEach { bot.executeAsync(it) }
-                    return@future null
+                    var result: BaseResponse? = null
+                    requests.forEach { request ->
+                        result = bot.executeAsync(request)
+                    }
+                    result
                 }
             }
 
@@ -38,8 +64,11 @@ fun interface Response {
         fun <Rq, Rs> ofAll(vararg requests: Rq): Response where Rq : BaseRequest<Rq, Rs>, Rs : BaseResponse =
             Response { bot ->
                 botResponseScope.future {
-                    requests.forEach { bot.executeAsync(it) }
-                    return@future null
+                    var result: BaseResponse? = null
+                    requests.forEach { request ->
+                        result = bot.executeAsync(request)
+                    }
+                    result
                 }
             }
 
@@ -61,6 +90,7 @@ fun interface Response {
                 }
             }
 
+        @JvmStatic
         fun of(function: Function<TelegramBot, BaseResponse>): Response =
             Response { bot ->
                 botResponseScope.future {
@@ -79,10 +109,13 @@ fun interface Response {
 
         @JvmStatic
         fun ofAllResponses(responses: List<Response>): Response =
-            Response { bot: TelegramBot ->
+            Response { bot ->
                 botResponseScope.future {
-                    responses.forEach { it.accept(bot) }
-                    return@future null
+                    var result: BaseResponse? = null
+                    responses.forEach { response ->
+                        result = response.accept(bot).await()
+                    }
+                    result
                 }
             }
 
