@@ -34,7 +34,7 @@ class BotAddedHandleRegistry(
         }
     }
 
-    override val handleAnnotation: Class<out Annotation?>?
+    override val handleAnnotation: Class<out Annotation?>
         get() = BotAddedHandle::class.java
 
     override fun dispatch(update: Update): Response? {
