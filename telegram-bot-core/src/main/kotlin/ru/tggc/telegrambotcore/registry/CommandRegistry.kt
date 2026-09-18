@@ -3,6 +3,7 @@ package ru.tggc.telegrambotcore.registry
 import com.pengrad.telegrambot.model.Update
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
+import org.springframework.core.annotation.Order
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
 import ru.tggc.telegrambotcore.annotation.handle.CommandHandle
 import ru.tggc.telegrambotcore.dto.Response
@@ -15,6 +16,7 @@ import ru.tggc.telegrambotcore.service.UserRateLimiterService
 import ru.tggc.telegrambotcore.service.UserService
 
 @Component
+@Order(0)
 class CommandRegistry(
     handlerScanner: HandlerScanner,
     rateLimiter: UserRateLimiterService,

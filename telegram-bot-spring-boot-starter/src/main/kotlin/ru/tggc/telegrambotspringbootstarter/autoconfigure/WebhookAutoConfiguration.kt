@@ -12,7 +12,7 @@ import ru.tggc.telegrambotspringbootstarter.TelegramProperties
 import ru.tggc.telegrambotspringbootstarter.runner.TelegramBotRunner
 
 @AutoConfiguration(after = [TelegramBotAutoConfiguration::class])
-@ConditionalOnProperty(prefix = "telegram", name = ["mode"], havingValue = "webhook", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "telegram", name = ["mode"], havingValue = "webhook")
 @Slf4j
 open class WebhookAutoConfiguration {
     private val log = KotlinLogging.logger {}
@@ -21,12 +21,13 @@ open class WebhookAutoConfiguration {
     open fun telegramBotRunner(bot: TelegramBot, telegramProperties: TelegramProperties): TelegramBotRunner =
         TelegramBotRunner {
             log.info { "Starting telegram bot via webhook" }
-            val response = bot.execute(SetWebhook().url(telegramProperties.webhook.url))
+            val url = telegramProperties.webhook.url
+            require(!url.isNullOrBlank()) { "Set telegram.webhook.url when telegram.mode=webhook." }
+            val response = bot.execute(SetWebhook().url(url))
 
             log.info { "Webhook info $response" }
-            bot.execute(SendMessage(
-                    telegramProperties.adminId ?: throw NullPointerException("adminId"),
-                    "Webhook has been set $response"
-                ))
+            telegramProperties.adminId?.let { adminId ->
+                bot.execute(SendMessage(adminId, "Webhook has been set $response"))
+            }
         }
 }

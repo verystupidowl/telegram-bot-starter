@@ -11,7 +11,7 @@ import ru.tggc.telegrambotcore.dto.UserRole
 annotation class CommandHandle(
     val value: String,
     val requiredRoles: Array<UserRole> = [],
-    val canPrivate: Boolean = false,
+    val canPrivate: Boolean = true,
     val canPublic: Boolean = true,
     val access: Access = Access.OWNER_ONLY,
 )
