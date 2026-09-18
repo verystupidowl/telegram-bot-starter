@@ -1,6 +1,7 @@
 package ru.tggc.telegrambotcore.registry
 
 import com.pengrad.telegrambot.model.Update
+import jakarta.annotation.PostConstruct
 import lombok.extern.slf4j.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -23,8 +24,15 @@ class BotAddedHandleRegistry(
     userService: UserService,
     private val handlerArgumentResolver: HandlerArgumentResolver
 ) : AbstractHandleRegistry(handlerScanner, rateLimiter, exceptionHandler, globalAccessChecker, userService) {
-    @Value($$"${telegram.bot-id}")
-    private var botId: Long = 0
+    @Value($$"${telegram.bot-id:#{null}}")
+    private var botId: Long? = null
+
+    @PostConstruct
+    fun validateBotId() {
+        require(handlerMap.isEmpty() || botId != null) {
+            "Set telegram.bot-id when using @BotAddedHandle. Ordinary commands do not require it."
+        }
+    }
 
     override val handleAnnotation: Class<out Annotation?>?
         get() = BotAddedHandle::class.java
@@ -58,8 +66,8 @@ class BotAddedHandleRegistry(
     }
 
     override fun canHandle(update: Update): Boolean =
-        update.message()
+        botId != null && handlerMap.isNotEmpty() && (update.message()
             ?.newChatMembers()
-            ?.any { member -> member.id() == botId } ?: false
+            ?.any { member -> member.id() == botId } ?: false)
 
 }

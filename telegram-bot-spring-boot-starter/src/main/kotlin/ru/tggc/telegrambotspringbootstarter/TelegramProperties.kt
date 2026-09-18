@@ -30,11 +30,9 @@ data class TelegramProperties(
     var botId: String? = null,
 
     /**
-     * List of messages base names
+     * Optional message resources, without the .yml suffix. No files are loaded by default.
      */
-    var baseNames: List<String> = listOf(
-        "telegram/messages/messages"
-    )
+    var baseNames: List<String> = emptyList()
 ) {
 
     enum class Mode {

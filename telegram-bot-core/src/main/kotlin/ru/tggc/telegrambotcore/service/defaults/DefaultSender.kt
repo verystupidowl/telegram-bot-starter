@@ -21,8 +21,8 @@ open class DefaultSender(
     private val telegramBot: TelegramBot,
     private val taskScheduler: TaskScheduler
 ) : TelegramBotSender {
-    @Value($$"${telegram.admin-id}")
-    private val adminId: Long = 0
+    @Value($$"${telegram.admin-id:#{null}}")
+    private var adminId: Long? = null
 
     private val log = KotlinLogging.logger {}
 
@@ -47,7 +47,8 @@ open class DefaultSender(
     }
 
     override fun sendToAdmin(text: String) {
-        val response: Response = ResponseBuilder.to(adminId)
+        val recipient = adminId ?: return
+        val response: Response = ResponseBuilder.to(recipient)
             .message(text, null)
             .build()
         response.accept(telegramBot)
