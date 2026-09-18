@@ -20,6 +20,9 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
 
+/**
+ * Базовое ДТО для работы с контекстом сообщения от пользователя
+ */
 @JvmRecord
 data class UpdateContext(
     val chatId: Long,
@@ -39,6 +42,9 @@ data class UpdateContext(
         return chatId == that.chatId && userId == that.userId
     }
 
+    /**
+     * Метод отправки фотографии
+     */
     fun send(photo: PhotoDto): Response {
         val photoDto = PhotoDto(
             url = photo.url,
@@ -51,7 +57,9 @@ data class UpdateContext(
             .build()
     }
 
-
+    /**
+     * Метод отправки фотографии с удалением предыдущего сообщения
+     */
     fun sendWithDelete(photo: PhotoDto): Response {
         return send(photo)
             .andThen(Response.create { bot ->
@@ -59,17 +67,29 @@ data class UpdateContext(
             })
     }
 
+    /**
+     * Метод отправки списка фотографий с удалением предыдущего сообщения
+     */
     fun sendWithDelete(photos: List<PhotoDto>): Response {
         return send(photos)
             .andThen(Response.create { bot -> bot.executeAsync(DeleteMessage(chatId, messageId)) })
     }
 
+    /**
+     * Метод для сборки сообщения с присвоением текста
+     */
     fun message(text: String): UpdateBuilder =
         UpdateBuilder(chatId, userId, messageId)
             .message(text)
 
+    /**
+     * Метод для сборки сообщения с присвоением фото
+     */
     fun photo(photo: String): UpdateBuilder = UpdateBuilder(chatId, userId, messageId).photo(photo)
 
+    /**
+     * Метод для простой отправки сообщения
+     */
     @JvmOverloads
     fun send(
         text: String,
@@ -79,6 +99,9 @@ data class UpdateContext(
         .message(text, markup?.bindToUser(userId))
         .build()
 
+    /**
+     * Метод для отправки списка сущностей
+     */
     @JvmOverloads
     fun send(entities: List<Any>, chatId: Long = this.chatId): Response {
         val first = entities.firstOrNull() ?: return Response.empty()
@@ -102,6 +125,9 @@ data class UpdateContext(
         }
     }
 
+    /**
+     * Метод для отправки текстового сообщения с удалением предыдущего
+     */
     @JvmOverloads
     fun sendWithDelete(text: String, markup: InlineKeyboardMarkup? = null, chatId: Long = this.chatId): Response {
         return this.send(text = text, chatId = chatId, markup = markup)
@@ -111,6 +137,9 @@ data class UpdateContext(
             }
     }
 
+    /**
+     * Метод для изменения текущего сообщения
+     */
     @JvmOverloads
     fun edit(
         caption: String,
@@ -121,13 +150,17 @@ data class UpdateContext(
         .edit(messageId, caption, markup?.bindToUser(userId))
         .build()
 
-
+    /**
+     * Метод для изменения текущего сообщения
+     */
     @JvmOverloads
     fun edit(photos: List<PhotoDto>, messageId: Int = this.messageId): Response = ResponseBuilder.create()
         .edit(photos, messageId, chatId = this.chatId)
         .build()
 
-
+    /**
+     * Метод для изменения текущего сообщения
+     */
     @JvmOverloads
     fun edit(
         photoUrl: String?,
@@ -139,6 +172,9 @@ data class UpdateContext(
         .editPhoto(messageId, photoUrl, caption, markup?.bindToUser(userId))
         .build()
 
+    /**
+     * Метод для изменения текущего сообщения
+     */
     fun edit(photo: PhotoDto): Response = edit(
         caption = photo.caption!!,
         markup = photo.markup,
@@ -146,6 +182,9 @@ data class UpdateContext(
         photoUrl = photo.url
     )
 
+    /**
+     * Метод для удаления текущего сообщения
+     */
     @JvmOverloads
     fun delete(messageId: Int = this.messageId, chatId: Long = this.chatId): Response =
         ResponseBuilder.to(chatId)
@@ -161,6 +200,12 @@ data class UpdateContext(
         }
     }
 
+    /**
+     * Метод для отправки фотографии и добавления его в историю сообщения
+     *
+     * @param historyKey ключ в истории
+     * @param failAction действие, выполняемое, если такой ключ уже присутствует в истории
+     */
     @JvmOverloads
     fun askPhoto(
         photoUrl: String,
@@ -182,6 +227,12 @@ data class UpdateContext(
         }
     }
 
+    /**
+     * Метод для отправки простого текстового сообщения и добавления его в историю сообщения
+     *
+     * @param historyKey ключ в истории
+     * @param failAction действие, выполняемое, если такой ключ уже присутствует в истории
+     */
     @JvmOverloads
     fun ask(
         text: String,
@@ -202,6 +253,9 @@ data class UpdateContext(
         }
     }
 
+    /**
+     * Метод для удаления сообщения без удаления из истории
+     */
     fun cleanInput(): Response {
         val promptMessageId = historyService.getPromptMessageId(this)
 
@@ -214,12 +268,18 @@ data class UpdateContext(
         return builder.build()
     }
 
+    /**
+     * Метод для удаления сообщения с удалением из истории
+     */
     fun cleanPromptAndInput(): Response {
         historyService.removeFromHistory(this)
         val response = cleanInput()
         return response
     }
 
+    /**
+     * Метод для отправки тяжеловесных сообщений, с загрузкой перед отправкой
+     */
     @JvmOverloads
     fun sendWithLoader(textSupplier: Supplier<PhotoDto>, isDelete: Boolean = false, text: String? = null): Response {
         return Response.create { bot ->

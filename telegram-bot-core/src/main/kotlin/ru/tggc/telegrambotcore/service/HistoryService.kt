@@ -6,9 +6,18 @@ import ru.tggc.telegrambotcore.dto.UpdateContext
 import java.util.*
 import java.util.function.Consumer
 
+/**
+ * Сервис для работы с историей сообщений
+ */
 interface HistoryService {
     fun setHistory(ctx: UpdateContext, historyType: HistoryKey, failAction: Consumer<DialogSession>)
-    fun setHistory(ctx: UpdateContext, historyType: HistoryKey, promptMessageId: Int?, failAction: Consumer<DialogSession>)
+    fun setHistory(
+        ctx: UpdateContext,
+        historyType: HistoryKey,
+        promptMessageId: Int?,
+        failAction: Consumer<DialogSession>
+    )
+
     fun getSession(ctx: UpdateContext): DialogSession?
     fun getPromptMessageId(ctx: UpdateContext): Int?
     fun putData(ctx: UpdateContext, key: String, value: String)

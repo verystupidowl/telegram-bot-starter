@@ -5,6 +5,9 @@ import com.pengrad.telegrambot.model.User
 import ru.tggc.telegrambotcore.dto.AccessResult
 import java.lang.reflect.Method
 
+/**
+ * Интерфейс для проверок пользователей/чатов
+ */
 interface AccessChecker {
     fun check(from: User, method: Method, chat: Chat): AccessResult
 }
