@@ -21,6 +21,12 @@ abstract class AbstractInlineKeyboardCreator<T>(override val keyboardKey: Keyboa
             .toMutableList()
     }
 
+    protected fun row(vararg buttons: InlineKeyboardButton): MutableList<InlineKeyboardButton> {
+        return buttons
+            .map { b -> btn(b.text, b.callbackData!!) }
+            .toMutableList()
+    }
+
     protected fun btn(text: String?, callbackData: String): InlineKeyboardButton {
         return InlineKeyboardButton(text).callbackData(callbackData)
     }

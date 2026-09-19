@@ -29,6 +29,12 @@ data class UpdateContext(
     val userId: Long,
     val messageId: Int = 0,
 ) {
+    /**
+     * Wait for an asynchronous service without blocking the update processing thread.
+     */
+    fun <T> await(task: Supplier<out CompletableFuture<T>>): AsyncResponse<T> =
+        AsyncResponse(chatId, task)
+
     companion object {
         @JvmStatic
         internal lateinit var historyService: HistoryService

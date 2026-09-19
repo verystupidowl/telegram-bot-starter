@@ -9,12 +9,21 @@ import ru.tggc.telegrambotcore.dto.RateLimitDto
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Function
 
 @Service
 class UserRateLimiterService {
     private val log = KotlinLogging.logger {}
+    private val asyncLocks = ConcurrentHashMap<Long, Any>()
+
+    /** Owned by one running async response; unlike the legacy lock this does not expire mid-request. */
+    fun tryAcquireAsync(userId: Long): AutoCloseable? {
+        val owner = Any()
+        if (asyncLocks.putIfAbsent(userId, owner) != null) return null
+        return AutoCloseable { asyncLocks.remove(userId, owner) }
+    }
 
     private val countOfUpdates: Cache<Long?, Int?> = Caffeine.newBuilder()
         .expireAfterWrite(Duration.ofSeconds(10))
@@ -41,6 +50,7 @@ class UserRateLimiterService {
     }
 
     fun isLocked(userId: Long?): Boolean {
+        if (userId != null && asyncLocks.containsKey(userId)) return true
         val locked = lockCache.get(userId, Function { `_`: Long? -> AtomicBoolean(false) })
         return locked!!.get()
     }

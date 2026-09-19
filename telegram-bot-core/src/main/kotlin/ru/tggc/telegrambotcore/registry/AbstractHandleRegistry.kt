@@ -5,10 +5,16 @@ import com.pengrad.telegrambot.model.Chat
 import com.pengrad.telegrambot.model.User
 import com.pengrad.telegrambot.response.BaseResponse
 import jakarta.annotation.PostConstruct
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.future.future
 import lombok.extern.slf4j.Slf4j
 import ru.tggc.telegrambotcore.access.checker.GlobalAccessChecker
 import ru.tggc.telegrambotcore.annotation.handle.BotHandler
 import ru.tggc.telegrambotcore.dto.ChatDto
+import ru.tggc.telegrambotcore.dto.CompletionAwareResponse
+import ru.tggc.telegrambotcore.dto.asyncResponseScope
 import ru.tggc.telegrambotcore.dto.Response
 import ru.tggc.telegrambotcore.dto.UserDto
 import ru.tggc.telegrambotcore.exception.ExceptionHandler
@@ -46,6 +52,11 @@ abstract class AbstractHandleRegistry(
         rateLimiter.lock(from.id())
         try {
             val response = method.invoke(bean, *args) as Response?
+            if (response is CompletionAwareResponse) {
+                // The async lease is acquired atomically at execution, before the lazy service call.
+                rateLimiter.unlock(from.id())
+                return trackAsyncResponse(response, chat, from)
+            }
             return response?.andThen { _: TelegramBot ->
                 rateLimiter.unlock(from.id())
                 CompletableFuture.completedFuture<BaseResponse>(null)
@@ -58,6 +69,26 @@ abstract class AbstractHandleRegistry(
                 }
         }
     }
+
+    private fun trackAsyncResponse(response: CompletionAwareResponse, chat: Chat, from: User): Response =
+        CompletionAwareResponse { bot ->
+            val lease = rateLimiter.tryAcquireAsync(from.id())
+                ?: return@CompletionAwareResponse CompletableFuture.completedFuture(null)
+            val completion = asyncResponseScope.future {
+                try {
+                    response.accept(bot).await()
+                } catch (e: Exception) {
+                    // Cancellation is terminal, not a reason to send another message.
+                    currentCoroutineContext().ensureActive()
+                    exceptionHandler.handleException(e, chat, from).accept(bot).await()
+                } finally {
+                    lease.close()
+                }
+            }
+            // Also release if cancelled before the coroutine gets a chance to start.
+            completion.whenComplete { _, _ -> lease.close() }
+            completion
+        }
 
     protected fun saveOrUpdateUser(from: User, chat: Chat) {
         val userDto = UserDto(from.id(), from.username(), from.firstName())
