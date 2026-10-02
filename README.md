@@ -128,6 +128,89 @@ telegram:
 
 `UserDto.username` и `ChatDto.title` теперь допускают `null`, как и соответствующие данные Telegram. Собственные сервисы должны учитывать отсутствие этих полей.
 
+## Отправка и вопросы через цепочки
+
+У текстовых `send` и `ask` есть настраиваемые ответы. Они уже реализуют `Response`, поэтому `.build()` необязателен:
+
+```java
+return ctx.ask("Введите ставку", HistoryType.SLOTS_SET_BET)
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.CANCEL))
+    .fallback(HandlerUtils.fallback(formatService, keyboardFactory));
+```
+
+```java
+return ctx.send(bossFightService.startFight(ctx.chatId()))
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
+```
+
+Второй пример сначала получает текст из `startFight`, передаёт его в `ctx.send(...)`, а затем настраивает клавиатуру ответа.
+В примерах `HistoryType`, `KeyboardType`, `HandlerUtils` и сервисы принадлежат приложению бота.
+
+Если предпочитаете явно завершать цепочку, добавьте `.build()`:
+
+```java
+return ctx.ask("Введите ставку", HistoryType.SLOTS_SET_BET)
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.CANCEL))
+    .fallback(HandlerUtils.fallback(formatService, keyboardFactory))
+    .build();
+```
+
+- `keyboard(...)` принимает готовый `InlineKeyboardMarkup`; привязка callback-кнопок к пользователю сохраняется.
+- `fallback(...)` доступен у `ask` и принимает прежний `Consumer<DialogSession>`. Он вызывается, если уже существует активный диалог, и получает эту сессию. Это не обработчик сетевых ошибок.
+- `keyboard(...)` и `fallback(...)` можно указывать в любом порядке. Каждый вызов возвращает новую настройку ответа и не меняет ранее созданную цепочку.
+- Создание цепочки и `.build()` не отправляют сообщение и не меняют историю. Действия выполняются при отправке `Response` библиотекой; история добавляется после успешной отправки вопроса, как и раньше.
+- `ctx.send(text, keyboard)` и `ctx.ask(text, state, keyboard, fallback)` продолжают работать. Вызовы с явно заданным другим `chatId` и именованные аргументы Kotlin также сохраняются.
+- Сигнатуры прежних методов сохранены на уровне JVM, включая короткие перегрузки и аргументы Kotlin по умолчанию: уже собранным клиентам не требуется менять вызовы.
+
+## Редактирование и фотографии через цепочки
+
+Каждый пример — отдельный ответ обработчика; `.build()` по-прежнему необязателен.
+
+```java
+// Изменить обычное текстовое сообщение
+return ctx.editText("Бой начался")
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
+```
+
+```java
+// Изменить только подпись фотографии
+return ctx.edit("Новая подпись")
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
+// То же действие с явным названием: ctx.editCaption("Новая подпись")
+```
+
+```java
+// Отправить фотографию в текущий чат: URL или Telegram file_id
+return ctx.sendPhoto(photoUrl)
+    .caption("<b>Бой начался</b>")
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
+```
+
+```java
+// Заменить фотографию текущего сообщения вместе с подписью и клавиатурой
+return ctx.editPhoto(newPhotoUrl)
+    .caption("<b>Следующий раунд</b>")
+    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
+```
+
+Готовые `PhotoDto` тоже поддерживают цепочки:
+
+```java
+return ctx.send(photoDto).caption("Подпись").keyboard(keyboard);
+```
+
+```java
+return ctx.edit(photoDto).keyboard(keyboard);
+```
+
+- Прежний `edit(String)` продолжает менять **подпись фотографии**, чтобы существующие боты сохранили поведение. Для обычного текста используйте `editText(String)`, для подписи также доступен `editCaption(String)`.
+- `sendPhoto` и `editPhoto` используют текущий чат, а `editPhoto` — текущий `messageId`. У `send(PhotoDto)` и `edit(PhotoDto)` сохраняется `chatId` из DTO; задавайте его при создании DTO.
+- `editPhoto` отправляет `EditMessageMedia`: фотография заменяется в том же сообщении, без удаления и повторной отправки.
+- `caption(...)` необязателен, поддерживает HTML и может принимать `null`. `editPhoto(url)` без подписи задаёт фото без подписи; для изменения только подписи без замены фото используйте `editCaption(...)`.
+- `caption(...)` и `keyboard(...)` можно вызывать в любом порядке. Они возвращают новые ответы, поэтому настройка одной ветки не меняет остальные. `keyboard(null)` исключает клавиатуру из запроса; это не отдельная команда удаления уже существующей клавиатуры.
+- Построение цепочки не выполняет запросы. Ответы подходят для `return`, `onSuccess(...)` и существующих способов объединения `Response`.
+- Старые перегрузки `edit(caption, keyboard, chatId, messageId)` и `edit(photoUrl, caption, keyboard, chatId, messageId)` сохранены, включая JVM-сигнатуры и аргументы Kotlin по умолчанию.
+
 ## Ожидание ответа сервера по кнопке
 
 Если сервис возвращает `CompletableFuture<Report>`, используйте `ctx.await(...)`.
@@ -203,3 +286,6 @@ return ctx.await(() -> reportService.loadReport())
 
 `AsyncResponseTest` проверяет Java API, загрузку, ошибки, таймаут, отмену, поздний результат, очистку и совместимость цепочек.
 `AsyncBotTests` проверяет нажатия кнопок через маршрутизатор, подтверждение callback, защиту от повторного запуска и освобождение блокировки.
+
+`FluentReplyTest` и `FluentReplyKotlinTests` проверяют цепочки `ask`/`send`, клавиатуры, конфликт диалогов, отложенное выполнение и прежние JVM-сигнатуры Java/Kotlin.
+`MediaReplyTest` проверяет редактирование текста и подписей, отправку и замену фото, независимость цепочек, фотографии без подписи и совместимость прежних вызовов.
