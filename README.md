@@ -1,17 +1,95 @@
 # Telegram Bot Starter
 
-Для простого бота нужны зависимость, токен и обработчик команды.
-Собственные сервисы, база данных, ID администратора, ID бота и файлы сообщений не нужны.
+Spring Boot-стартер для Telegram-ботов на Java и Kotlin. Объявляйте обработчики команд и кнопок через аннотации, возвращайте `Response`, а получение обновлений, маршрутизацию и отправку ответов берёт на себя библиотека.
 
-## Бот, который отвечает «привет» на `/start`
+```java
+@BotHandler
+public class StartHandler {
+    @CommandHandle("start")
+    public Response start(@Ctx UpdateContext ctx) {
+        return ctx.send("Привет! Это мой первый бот.");
+    }
+}
+```
 
-Требуются Java 21+ и Maven. Сначала установите текущую версию библиотеки в локальный Maven-репозиторий, выполнив в её корне:
+Для первого бота нужны только зависимость, токен и обработчик. База данных, домен, публичный сервер, ID администратора и собственный `UserService` не обязательны.
+
+## Содержание
+
+- [Возможности](#возможности)
+- [Требования](#требования)
+- [Первый бот](#первый-бот)
+- [Готовый пример](#готовый-пример)
+- [Кнопки и ответы](#кнопки-и-ответы)
+- [Настройки](#настройки)
+- [Webhook](#webhook)
+- [Расширение библиотеки](#расширение-библиотеки)
+- [Частые проблемы](#частые-проблемы)
+- [Разработка и обновление](#разработка-и-обновление)
+
+## Возможности
+
+- Обработка команд, callback-кнопок, текста, фото и добавления бота в группу.
+- Передача контекста, ID чата и пользователя в аргументы обработчика через аннотации.
+- Отправка и редактирование текста и фотографий, inline-клавиатуры.
+- Диалоги с историей, ограничения доступа и частоты запросов.
+- Асинхронные ответы с индикатором загрузки, таймаутом и обработчиками ошибок.
+- Long polling по умолчанию; webhook как отдельный режим.
+- Возможность заменить стандартные сервисы своими Spring-бинами.
+
+Модули: `telegram-bot-core` содержит API и обработку обновлений; `telegram-bot-spring-boot-starter` подключает ядро и автоматическую конфигурацию Spring Boot. В приложении достаточно зависимости на стартер.
+
+## Требования
+
+| Компонент | Версия в текущем проекте |
+| --- | --- |
+| JDK | 21 или новее |
+| Spring Boot | 4.1.0 |
+| Maven | Wrapper библиотеки использует 3.9.16 |
+| Kotlin | 2.2.0 внутри библиотеки; для Java-приложения Kotlin-плагин не нужен |
+| Стартер | `ru.tggc:telegram-bot-spring-boot-starter:0.0.1-SNAPSHOT` |
+
+Ниже используется версия из исходников и локальная установка Maven. Инструкция не предполагает публикацию артефакта в Maven Central. Совместимость с другими версиями Spring Boot здесь не заявляется.
+
+## Первый бот
+
+### 1. Получите токен
+
+В Telegram откройте `@BotFather`, отправьте `/newbot`, задайте имя и username нового бота. Сохраните выданный токен: он даёт доступ к управлению ботом.
+
+Не добавляйте токен в Git, README или исходный код. Для примера передадим его через переменную окружения.
+
+### 2. Установите библиотеку
+
+Скачайте исходники этого репозитория и откройте терминал **в его корне**, рядом с родительским `pom.xml`.
+
+Windows PowerShell:
 
 ```powershell
 .\mvnw.cmd install
 ```
 
-В отдельном проекте создайте `pom.xml`:
+Linux / macOS:
+
+```bash
+./mvnw install
+```
+
+Установка собирает оба модуля, запускает тесты и помещает артефакты в локальный Maven-репозиторий. `JAVA_HOME` должен указывать на JDK 21+. Для первой сборки нужен интернет для скачивания зависимостей.
+
+### 3. Создайте приложение
+
+В отдельной папке `hello-bot` создайте такую структуру:
+
+```text
+hello-bot/
+  pom.xml
+  src/main/java/example/hellobot/
+    HelloBotApplication.java
+    StartHandler.java
+```
+
+`pom.xml`:
 
 ```xml
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -29,6 +107,7 @@
     <version>1.0.0</version>
     <properties>
         <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
         <dependency>
@@ -48,244 +127,250 @@
 </project>
 ```
 
-Создайте `src/main/java/example/HelloBotApplication.java`:
+`src/main/java/example/hellobot/HelloBotApplication.java`:
 
 ```java
-package example;
+package example.hellobot;
 
-import com.pengrad.telegrambot.request.SendMessage;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import ru.tggc.telegrambotcore.annotation.handle.BotHandler;
-import ru.tggc.telegrambotcore.annotation.handle.CommandHandle;
-import ru.tggc.telegrambotcore.annotation.params.ChatId;
-import ru.tggc.telegrambotcore.dto.Response;
 
-@SpringBootApplication(proxyBeanMethods = false)
-@BotHandler
+@SpringBootApplication
 public class HelloBotApplication {
     public static void main(String[] args) {
         SpringApplication.run(HelloBotApplication.class, args);
     }
+}
+```
 
+`src/main/java/example/hellobot/StartHandler.java`:
+
+```java
+package example.hellobot;
+
+import ru.tggc.telegrambotcore.annotation.handle.BotHandler;
+import ru.tggc.telegrambotcore.annotation.handle.CommandHandle;
+import ru.tggc.telegrambotcore.annotation.params.Ctx;
+import ru.tggc.telegrambotcore.dto.Response;
+import ru.tggc.telegrambotcore.dto.UpdateContext;
+
+@BotHandler
+public class StartHandler {
     @CommandHandle("start")
-    public Response start(@ChatId Long chatId) {
-        return Response.of(new SendMessage(chatId, "привет"));
+    public Response start(@Ctx UpdateContext ctx) {
+        return ctx.send("Привет! Это мой первый бот.");
     }
 }
 ```
 
-Получите токен у BotFather и задайте его при запуске. Не сохраняйте настоящий токен в исходниках:
+Обработчик находится в том же пакете, что и приложение, либо в его подпакете: так Spring обнаружит его автоматически.
+
+### 4. Запустите
+
+Откройте терминал **в папке приложения `hello-bot`**. Следующие команды предполагают установленный Maven в `PATH`; для готового примера ниже можно использовать wrapper библиотеки.
+
+Windows PowerShell:
 
 ```powershell
-$env:TELEGRAM_TOKEN = 'токен-бота'
+$env:TELEGRAM_TOKEN = 'токен-от-BotFather'
 mvn spring-boot:run
 ```
 
-Файл `application.yml` не обязателен. Если удобнее использовать другую переменную окружения, можно создать `src/main/resources/application.yml`:
+Linux / macOS:
+
+```bash
+export TELEGRAM_TOKEN='токен-от-BotFather'
+mvn spring-boot:run
+```
+
+В IntelliJ IDEA можно запустить `HelloBotApplication`, указав `TELEGRAM_TOKEN` в **Run Configuration → Environment variables**. Переменная из терминала не появится автоматически в уже открытой конфигурации IDEA.
+
+Файл `application.yml` для этого примера не нужен. Стартер выбирает long polling: бот сам получает обновления от Telegram. Нужен исходящий доступ к Telegram API, но не публичный входящий адрес.
+
+### 5. Проверьте ответ
+
+Откройте личный чат с созданным ботом и отправьте `/start`. Ожидаемый ответ:
+
+```text
+Привет! Это мой первый бот.
+```
+
+Остановить приложение в терминале можно через `Ctrl+C`. При остановленном приложении бот не отвечает.
+
+Что делает пример:
+
+- `@BotHandler` регистрирует класс как Spring-компонент с обработчиками.
+- `@CommandHandle("start")` обрабатывает `/start`. В аннотации слеш не указывается.
+- `@Ctx` передаёт `UpdateContext`: текущие `chatId`, `userId` и `messageId`.
+- `ctx.send(...)` создаёт ответ; отправку выполняет библиотека после возврата из обработчика.
+- Возвращается `Response`, а не обычный `String`. Вызывать `accept()` вручную не нужно.
+
+## Готовый пример
+
+Те же файлы находятся в [examples/hello-bot](examples/hello-bot). Пример является отдельным Maven-проектом и не включён в сборку модулей библиотеки.
+
+После установки библиотеки выполните **из корня репозитория**:
+
+```powershell
+$env:TELEGRAM_TOKEN = 'токен-от-BotFather'
+.\mvnw.cmd -f examples/hello-bot/pom.xml spring-boot:run
+```
+
+Для Linux / macOS замените `.\mvnw.cmd` на `./mvnw` и задайте переменную через `export`.
+
+Сборка исполняемого JAR без запуска бота:
+
+```powershell
+.\mvnw.cmd -f examples/hello-bot/pom.xml package
+```
+
+Запуск собранного приложения с уже заданной переменной `TELEGRAM_TOKEN`:
+
+```powershell
+java -jar examples/hello-bot/target/hello-bot-1.0.0.jar
+```
+
+## Кнопки и ответы
+
+Когда `/start` заработал, добавьте рядом со `StartHandler` файл `MenuHandler.java`:
+
+```java
+package example.hellobot;
+
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
+import ru.tggc.telegrambotcore.annotation.handle.BotHandler;
+import ru.tggc.telegrambotcore.annotation.handle.CallbackHandle;
+import ru.tggc.telegrambotcore.annotation.handle.CommandHandle;
+import ru.tggc.telegrambotcore.annotation.params.Ctx;
+import ru.tggc.telegrambotcore.dto.Response;
+import ru.tggc.telegrambotcore.dto.UpdateContext;
+
+@BotHandler
+public class MenuHandler {
+    @CommandHandle("menu")
+    public Response menu(@Ctx UpdateContext ctx) {
+        var keyboard = new InlineKeyboardMarkup(
+                new InlineKeyboardButton("Поздороваться").callbackData("hello"));
+        return ctx.send("Выбери действие:").keyboard(keyboard);
+    }
+
+    @CallbackHandle(value = "hello", canPrivate = true)
+    public Response hello(@Ctx UpdateContext ctx) {
+        return ctx.editText("Привет! Кнопка работает.");
+    }
+}
+```
+
+Перезапустите приложение, отправьте `/menu` и нажмите кнопку. `canPrivate = true` здесь обязателен для личного чата: у callback-обработчиков значение по умолчанию отличается от команд. Клавиатура, отправленная через `ctx`, привязывается к пользователю; по умолчанию действует `Access.OWNER_ONLY`.
+
+Для обычного текста используйте `editText(...)`. Метод `edit(String)` меняет **подпись фотографии**, а не текстовое сообщение. У цепочек `send`, `ask`, `editText` и `sendPhoto` вызов `.build()` необязателен.
+
+Более сложные сценарии: [ответы, фотографии, диалоги и асинхронные операции](docs/replies.md).
+
+## Настройки
+
+| Свойство | По умолчанию / назначение |
+| --- | --- |
+| `telegram.token` | Обязательный токен; можно передать как `TELEGRAM_TOKEN` |
+| `telegram.mode` | Без свойства используется long polling. Для первого бота не задавайте его; для webhook задайте `webhook` |
+| `telegram.admin-id` | Не задан; уведомления администратору пропускаются |
+| `telegram.bot-id` | Не задан; нужен при использовании `@BotAddedHandle` |
+| `telegram.base-names` | Пустой список; YAML-шаблоны не загружаются |
+| `telegram.webhook.url` | Полный публичный HTTPS URL для регистрации webhook |
+| `telegram.webhook.path` | Поле есть в настройках, но текущий `WebhookController` не использует его для изменения маршрута |
+
+Если хотите назвать переменную токена `BOT_TOKEN`, создайте `src/main/resources/application.yml`:
 
 ```yaml
 telegram:
   token: ${BOT_TOKEN}
 ```
 
-В этом случае задайте `BOT_TOKEN` вместо `TELEGRAM_TOKEN`.
-Библиотека сама запускает long polling. Отправьте боту `/start` в личном чате: он ответит «привет».
-В `@CommandHandle` имя команды записывается без `/`. Сейчас обработчик возвращает `Response`; возврат обычной строки пока не поддерживается.
+Тогда задавайте `BOT_TOKEN` вместо `TELEGRAM_TOKEN`.
 
-## Что происходит без дополнительных настроек
+Без дополнительных бинов пользователи не сохраняются, команды без требований к ролям доступны, а команды с `requiredRoles` не получают разрешение от стандартного `NoOpUserService`. Планировщик и нейтральный обработчик ошибок предоставляются автоматически. Ограничения частоты запросов и блокировки остаются активными.
 
-| Возможность | Поведение по умолчанию |
+## Webhook
+
+Для первого запуска рекомендуется long polling. Webhook нужен, если Telegram должен доставлять обновления на ваш публичный HTTPS-сервер.
+
+В текущей версии регистрация webhook и подключение HTTP-контроллера являются отдельными действиями. Добавьте в `HelloBotApplication` импорт:
+
+```java
+import org.springframework.context.annotation.Import;
+import ru.tggc.telegrambotspringbootstarter.WebhookController;
+```
+
+И аннотацию на класс приложения рядом с `@SpringBootApplication`:
+
+```java
+@Import(WebhookController.class)
+```
+
+Настройте `application.yml`:
+
+```yaml
+server:
+  port: 8080
+telegram:
+  token: ${BOT_TOKEN}
+  mode: webhook
+  webhook:
+    url: ${BOT_WEBHOOK_URL}
+```
+
+`BOT_WEBHOOK_URL` должен содержать полный адрес, например `https://bot.example.com/telegram/webhook`. Внешний HTTPS-прокси должен пересылать POST-запросы на порт приложения и путь `/telegram/webhook`. Не отключайте веб-сервер через `spring.main.web-application-type=none` в этом режиме.
+
+Текущий контроллер имеет фиксированный маршрут `/telegram/webhook`; одного `telegram.webhook.path` недостаточно, чтобы его изменить. Автоконфигурация вызывает `setWebhook`, но проверяйте результат регистрации в журнале. Перед production-размещением добавьте проверку webhook secret: текущий контроллер её не выполняет.
+
+Для возврата к long polling остановите webhook-экземпляр, удалите webhook через Telegram Bot API, уберите `telegram.mode` и перезапустите приложение. Сам polling-runner webhook не удаляет. Не запускайте два polling-экземпляра с одним токеном.
+
+## Расширение библиотеки
+
+Подключайте дополнительное поведение только когда оно требуется:
+
+| Задача | Точка расширения |
 | --- | --- |
-| Получение сообщений | Long polling; `telegram.mode` не требуется |
-| Пользователи | Данные не сохраняются; база данных не требуется |
-| Роли | Команды без требований к ролям доступны; требующие роль получают отказ |
-| Ошибки обработчика | Ошибка записывается в журнал; пользователю отправляется нейтральное сообщение |
-| Отложенная отправка | Планировщик создаётся автоматически, если своего нет |
-| Уведомления администратору | Без `telegram.admin-id` отправка администратору пропускается |
-| YAML-шаблоны сообщений | По умолчанию файлы не загружаются |
-| Личные сообщения | `@CommandHandle` разрешает их по умолчанию |
+| Пользователи, роли, сохранение данных | Spring-бин `ru.tggc.telegrambotcore.service.UserService` |
+| Собственная обработка исключений | Spring-бин `ru.tggc.telegrambotcore.exception.ExceptionHandler` |
+| Свой планировщик | Spring-бин `org.springframework.scheduling.TaskScheduler` |
+| YAML-шаблоны | `telegram.base-names` и `FormatService` |
+| Клавиатуры | `KeyboardFactory` и реализации создателей клавиатур |
 
-Ограничение частоты запросов и блокировка пользователя, уже существующие в библиотеке, пока остаются включёнными.
+Собственные `UserService`, `ExceptionHandler` и `TaskScheduler` заменяют стандартные реализации через `@ConditionalOnMissingBean`. JPA, PostgreSQL и Liquibase не нужны стартеру для простого бота: их подключает приложение, когда появляется хранение данных.
 
-## Подключайте по необходимости
+Для шаблонов укажите пути без расширения, например `telegram.base-names: [messages/common]`, и добавьте `src/main/resources/messages/common.yml`. Явно настроенный отсутствующий файл приводит к ошибке запуска.
 
-- **Сохранение пользователей и свои роли:** зарегистрируйте Spring-бин `UserService`. Стандартная реализация автоматически уступит ему место.
-- **Своя обработка исключений:** зарегистрируйте бин `ExceptionHandler`.
-- **Свой планировщик:** зарегистрируйте бин `TaskScheduler`.
-- **Сообщения администратору:** укажите `telegram.admin-id`.
-- **Обработчик добавления бота в группу:** при использовании `@BotAddedHandle` укажите `telegram.bot-id`. Для обычных команд он не нужен.
-- **Шаблоны:** укажите `telegram.base-names`, например `[telegram/messages/messages]`, и добавьте соответствующий `.yml` в ресурсы. Явно заданный отсутствующий файл считается ошибкой настройки.
-- **Только групповые команды:** используйте `@CommandHandle(value = "start", canPrivate = false)`.
+## Частые проблемы
 
-## Изменения для существующих приложений
+| Симптом | Что проверить |
+| --- | --- |
+| Maven не находит `0.0.1-SNAPSHOT` | Выполните `install` из корня библиотеки, не только из папки одного модуля. На другой машине тоже нужна установка либо настроенный Maven-репозиторий |
+| `Set telegram.token` | Токен должен быть в окружении именно запускаемого процесса; проверьте Run Configuration в IDEA |
+| `UnsupportedClassVersionError` | Используется слишком старая Java; проверьте `java -version`, `JAVA_HOME` и JDK проекта |
+| Приложение работает, `/start` молчит | Проверьте пакет обработчика, `@BotHandler`, имя команды без `/`, возвращаемый `Response`, доступ к Telegram API и журнал ошибок |
+| Кнопка не работает в личном чате | Для `@CallbackHandle` задайте `canPrivate = true` |
+| Команда с ролью недоступна | Стандартный `NoOpUserService` не выдаёт роли; нужна собственная реализация |
+| Telegram сообщает о конфликте получения обновлений | Проверьте другой экземпляр с тем же токеном и ранее зарегистрированный webhook |
+| Webhook получает 404 | Импортируйте `WebhookController` и проверьте полный URL `/telegram/webhook` и маршрут прокси |
+| Повторные сообщения временно не обрабатываются | Проверьте rate limit, активный диалог и блокировку пользователя на время обработки |
 
-Собственные `UserService`, `ExceptionHandler` и `TaskScheduler` продолжают использоваться.
-Есть два изменения значений по умолчанию, которые следует проверить при обновлении:
+## Разработка и обновление
 
-1. `@CommandHandle` теперь разрешает личные сообщения. Для команд только для групп явно задайте `canPrivate = false`. Требования к ролям сохраняются.
-2. Стандартный путь `telegram/messages/messages.yml` больше не загружается автоматически. Если приложение использовало его без настройки, добавьте `telegram.base-names: [telegram/messages/messages]`.
-
-`UserDto.username` и `ChatDto.title` теперь допускают `null`, как и соответствующие данные Telegram. Собственные сервисы должны учитывать отсутствие этих полей.
-
-## Отправка и вопросы через цепочки
-
-У текстовых `send` и `ask` есть настраиваемые ответы. Они уже реализуют `Response`, поэтому `.build()` необязателен:
-
-```java
-return ctx.ask("Введите ставку", HistoryType.SLOTS_SET_BET)
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.CANCEL))
-    .fallback(HandlerUtils.fallback(formatService, keyboardFactory));
-```
-
-```java
-return ctx.send(bossFightService.startFight(ctx.chatId()))
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
-```
-
-Второй пример сначала получает текст из `startFight`, передаёт его в `ctx.send(...)`, а затем настраивает клавиатуру ответа.
-В примерах `HistoryType`, `KeyboardType`, `HandlerUtils` и сервисы принадлежат приложению бота.
-
-Если предпочитаете явно завершать цепочку, добавьте `.build()`:
-
-```java
-return ctx.ask("Введите ставку", HistoryType.SLOTS_SET_BET)
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.CANCEL))
-    .fallback(HandlerUtils.fallback(formatService, keyboardFactory))
-    .build();
-```
-
-- `keyboard(...)` принимает готовый `InlineKeyboardMarkup`; привязка callback-кнопок к пользователю сохраняется.
-- `fallback(...)` доступен у `ask` и принимает прежний `Consumer<DialogSession>`. Он вызывается, если уже существует активный диалог, и получает эту сессию. Это не обработчик сетевых ошибок.
-- `keyboard(...)` и `fallback(...)` можно указывать в любом порядке. Каждый вызов возвращает новую настройку ответа и не меняет ранее созданную цепочку.
-- Создание цепочки и `.build()` не отправляют сообщение и не меняют историю. Действия выполняются при отправке `Response` библиотекой; история добавляется после успешной отправки вопроса, как и раньше.
-- `ctx.send(text, keyboard)` и `ctx.ask(text, state, keyboard, fallback)` продолжают работать. Вызовы с явно заданным другим `chatId` и именованные аргументы Kotlin также сохраняются.
-- Сигнатуры прежних методов сохранены на уровне JVM, включая короткие перегрузки и аргументы Kotlin по умолчанию: уже собранным клиентам не требуется менять вызовы.
-
-## Редактирование и фотографии через цепочки
-
-Каждый пример — отдельный ответ обработчика; `.build()` по-прежнему необязателен.
-
-```java
-// Изменить обычное текстовое сообщение
-return ctx.editText("Бой начался")
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
-```
-
-```java
-// Изменить только подпись фотографии
-return ctx.edit("Новая подпись")
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
-// То же действие с явным названием: ctx.editCaption("Новая подпись")
-```
-
-```java
-// Отправить фотографию в текущий чат: URL или Telegram file_id
-return ctx.sendPhoto(photoUrl)
-    .caption("<b>Бой начался</b>")
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
-```
-
-```java
-// Заменить фотографию текущего сообщения вместе с подписью и клавиатурой
-return ctx.editPhoto(newPhotoUrl)
-    .caption("<b>Следующий раунд</b>")
-    .keyboard(keyboardFactory.getKeyboardInline(KeyboardType.FIGHT));
-```
-
-Готовые `PhotoDto` тоже поддерживают цепочки:
-
-```java
-return ctx.send(photoDto).caption("Подпись").keyboard(keyboard);
-```
-
-```java
-return ctx.edit(photoDto).keyboard(keyboard);
-```
-
-- Прежний `edit(String)` продолжает менять **подпись фотографии**, чтобы существующие боты сохранили поведение. Для обычного текста используйте `editText(String)`, для подписи также доступен `editCaption(String)`.
-- `sendPhoto` и `editPhoto` используют текущий чат, а `editPhoto` — текущий `messageId`. У `send(PhotoDto)` и `edit(PhotoDto)` сохраняется `chatId` из DTO; задавайте его при создании DTO.
-- `editPhoto` отправляет `EditMessageMedia`: фотография заменяется в том же сообщении, без удаления и повторной отправки.
-- `caption(...)` необязателен, поддерживает HTML и может принимать `null`. `editPhoto(url)` без подписи задаёт фото без подписи; для изменения только подписи без замены фото используйте `editCaption(...)`.
-- `caption(...)` и `keyboard(...)` можно вызывать в любом порядке. Они возвращают новые ответы, поэтому настройка одной ветки не меняет остальные. `keyboard(null)` исключает клавиатуру из запроса; это не отдельная команда удаления уже существующей клавиатуры.
-- Построение цепочки не выполняет запросы. Ответы подходят для `return`, `onSuccess(...)` и существующих способов объединения `Response`.
-- Старые перегрузки `edit(caption, keyboard, chatId, messageId)` и `edit(photoUrl, caption, keyboard, chatId, messageId)` сохранены, включая JVM-сигнатуры и аргументы Kotlin по умолчанию.
-
-## Ожидание ответа сервера по кнопке
-
-Если сервис возвращает `CompletableFuture<Report>`, используйте `ctx.await(...)`.
-Обработчик по-прежнему возвращает `Response`; дополнительных сервисов и настроек не требуется:
-
-```java
-@CallbackHandle(value = "load_report", canPrivate = true)
-public Response loadReport(@Ctx UpdateContext ctx) {
-    return ctx.await(() -> reportService.loadReport())
-        .loading("⏳ Загружаю отчёт…")
-        .timeout(Duration.ofSeconds(30))
-        .onSuccess(report -> ctx.send(report.text()))
-        .onError(error -> ctx.send("Не удалось получить отчёт. Попробуйте позже."));
-}
-```
-
-Для этого примера нужны `java.time.Duration`, `ru.tggc.telegrambotcore.annotation.handle.CallbackHandle`,
-`ru.tggc.telegrambotcore.annotation.params.Ctx`, `ru.tggc.telegrambotcore.dto.UpdateContext`
-и `ru.tggc.telegrambotcore.dto.Response`. `reportService` — ваш сервис, `Report` — ваш тип результата.
-
-Последовательность: подтверждение нажатия → сообщение загрузки → вызов сервиса → ответ или ошибка → удаление сообщения загрузки.
-Итоговый ответ отправляется отдельным сообщением: это позволяет вернуть не только текст, но и фото или другой `Response`.
-
-- `onSuccess(...)` обязателен. `loading(...)` необязателен; без него дополнительных сообщений нет.
-- Таймаут ожидания сервиса по умолчанию — 30 секунд. `timeout(...)` меняет его для конкретного запроса.
-- Без `onError(...)` ошибка передаётся существующему `ExceptionHandler` приложения.
-- Пока ответ выполняется, повторный запрос того же пользователя не запускает ещё один сервисный вызов. Блокировка действует в пределах одного экземпляра приложения и снимается при завершении, ошибке, таймауте или отмене. Другие обновления этого пользователя также проходят существующую проверку блокировки.
-- После таймаута поздний результат не отправляется. Исходный future сервиса не изменяется и не отменяется: другие его потребители не затрагиваются. Таймаут HTTP-клиента настраивается отдельно.
-- Сервис должен быстро вернуть future. Не используйте внутри переданного supplier блокирующие `get()`/`join()` или длительную синхронную работу.
-- Ошибка отображения загрузки не отменяет сам запрос. Ошибка удаления загрузки записывается в журнал и не заменяет результат запроса.
-- Ожидание сервиса не блокирует поток обработки обновлений. Отправка и удаление сообщений ограничены сетевыми таймаутами Telegram-клиента, а не `timeout(...)` сервиса.
-
-Существующие обработчики, `sendWithLoader(...)` и обычные `Response` сохраняют своё поведение.
-Новая реализация `AsyncResponse` реализует `Response`; обработчики не нужно переводить на возврат `CompletableFuture<Response>`.
-У нового ответа `andThen(...)` ждёт завершения предыдущего шага. Если новый ответ добавлен через существующий `ResponseBuilder.add(...)`
-или `Response.andThen(...)`, цепочка также отслеживается до завершения. Цепочки, состоящие только из прежних `Response`, не меняются.
-
-### Разные ответы для разных исключений
-
-`onError` принимает класс исключения и обработчик с этим типом аргумента — приведение типов не нужно:
-
-```java
-return ctx.await(() -> reportService.loadReport())
-    .loading("⏳ Загружаю отчёт…")
-    .onSuccess(report -> ctx.send(report.text()))
-    .onError(GeniusResponse.class, ex -> ctx.send(ex.getDTO().getMessage()))
-    .onError(TimeoutException.class, ex -> ctx.send("Сервер долго отвечает. Попробуйте позже."))
-    .onError(ex -> ctx.send("Не удалось получить отчёт."));
-```
-
-Здесь `GeniusResponse` — ваш класс исключения, например наследник `RuntimeException`, содержащий DTO.
-Если это обычный DTO ответа, оберните его в своё исключение, например `GeniusException`, и перехватывайте это исключение.
-`TimeoutException` импортируется из `java.util.concurrent`.
-
-Правила выбора:
-
-- Обработчик типа подходит также для его наследников.
-- Выбирается самый конкретный подходящий тип: `GeniusResponse` имеет приоритет над `RuntimeException`, независимо от порядка регистрации.
-- `CompletionException` и `ExecutionException` снимаются автоматически; обработчик получает исходное исключение с его полями. Произвольные бизнес-исключения не заменяются их `cause`.
-- Обычный `onError(ex -> ...)` — запасной обработчик, если ни один тип не подошёл. Если его нет, исключение передаётся существующему `ExceptionHandler` приложения.
-- Для одной ошибки выполняется только один обработчик. Если он сам бросит исключение, оно передаётся дальше, без повторного перебора локальных обработчиков.
-- Повторный `onError` для того же класса заменяет его обработчик в новой цепочке; ранее созданная цепочка не изменяется.
-
-Существующий `onError(ex -> ...)` сохраняет прежнее использование. Типизированные обработчики перехватывают ошибки сервиса и формирования ответа; отмена всего ответа и ошибки отправки в Telegram обрабатываются как прежде.
-
-## Проверка библиотеки
+Из корня библиотеки:
 
 ```powershell
 .\mvnw.cmd test
+.\mvnw.cmd install
 ```
 
-`MinimalBotTests` проверяет запуск с одним токеном, выбор транспорта, доставку `/start` из личного чата без username и названия, замену стандартных сервисов и ошибки обязательных настроек. Telegram-клиент при проверке отправки подменяется: реальные сообщения не отправляются.
+Тесты библиотеки используют подменённый Telegram-клиент и не требуют настоящего токена. `MinimalBotTests` проверяет минимальную конфигурацию и команду `/start`; остальные тесты покрывают Java/Kotlin API ответов, медиа, диалоги и асинхронное выполнение.
 
-`AsyncResponseTest` проверяет Java API, загрузку, ошибки, таймаут, отмену, поздний результат, очистку и совместимость цепочек.
-`AsyncBotTests` проверяет нажатия кнопок через маршрутизатор, подтверждение callback, защиту от повторного запуска и освобождение блокировки.
+При обновлении существующего приложения учитывайте:
 
-`FluentReplyTest` и `FluentReplyKotlinTests` проверяют цепочки `ask`/`send`, клавиатуры, конфликт диалогов, отложенное выполнение и прежние JVM-сигнатуры Java/Kotlin.
-`MediaReplyTest` проверяет редактирование текста и подписей, отправку и замену фото, независимость цепочек, фотографии без подписи и совместимость прежних вызовов.
+- `@CommandHandle` разрешает личные сообщения. Для команд только для групп задайте `canPrivate = false`.
+- Стандартный файл `telegram/messages/messages.yml` не загружается автоматически: при необходимости укажите его через `telegram.base-names` без `.yml`.
+- `UserDto.username` и `ChatDto.title` могут быть `null`.
+- `edit(String)` сохраняет старое поведение редактирования подписи; для текста есть `editText(String)`.
+- При изменении исходников повторите `install` и обновите Maven-зависимости в приложении-потребителе.
