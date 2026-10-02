@@ -28,7 +28,13 @@ data class UpdateContext(
     val chatId: Long,
     val userId: Long,
     val messageId: Int = 0,
-) {
+) : ReplyOperations {
+    /**
+     * Wait for an asynchronous service without blocking the update processing thread.
+     */
+    fun <T> await(task: Supplier<out CompletableFuture<T>>): AsyncResponse<T> =
+        AsyncResponse(chatId, task)
+
     companion object {
         @JvmStatic
         internal lateinit var historyService: HistoryService
@@ -45,17 +51,21 @@ data class UpdateContext(
     /**
      * Метод отправки фотографии
      */
-    fun send(photo: PhotoDto): Response {
-        val photoDto = PhotoDto(
-            url = photo.url,
-            caption = photo.caption,
-            chatId = photo.chatId,
-            markup = photo.markup?.bindToUser(userId),
-        )
-        return ResponseBuilder.create()
-            .photo(photoDto)
-            .build()
-    }
+    override fun send(photo: PhotoDto): PhotoReply = PhotoReply(this, photo)
+
+    /** Send a photo URL or Telegram file_id to the current chat. */
+    fun sendPhoto(photoUrl: String): PhotoReply = PhotoReply(this, PhotoDto(url = photoUrl, chatId = chatId))
+
+    /** Replace the current message's photo; configure its new caption with caption(...). */
+    fun editPhoto(photoUrl: String): PhotoReply =
+        PhotoReply(this, PhotoDto(url = photoUrl, chatId = chatId), messageId)
+
+    /** Edit a text message. Legacy edit(String) continues to edit a photo caption. */
+    fun editText(text: String): EditReply = EditReply({ markup ->
+        ResponseBuilder.to(chatId).editText(messageId, text, markup?.bindToUser(userId)).build()
+    })
+
+    fun editCaption(caption: String): EditReply = edit(caption)
 
     /**
      * Метод отправки фотографии с удалением предыдущего сообщения
@@ -90,7 +100,10 @@ data class UpdateContext(
     /**
      * Метод для простой отправки сообщения
      */
-    @JvmOverloads
+    override fun send(text: String): SendReply = SendReply(this, text)
+
+    override fun send(text: String, markup: InlineKeyboardMarkup?): SendReply = SendReply(this, text, markup)
+
     fun send(
         text: String,
         markup: InlineKeyboardMarkup? = null,
@@ -138,9 +151,15 @@ data class UpdateContext(
     }
 
     /**
-     * Метод для изменения текущего сообщения
+     * Изменяет подпись текущей фотографии (прежнее поведение edit).
      */
-    @JvmOverloads
+    override fun edit(caption: String): EditReply = edit(caption, null, chatId)
+
+    override fun edit(caption: String, markup: InlineKeyboardMarkup?): EditReply = edit(caption, markup, chatId)
+
+    override fun edit(caption: String, markup: InlineKeyboardMarkup?, chatId: Long): EditReply =
+        EditReply({ keyboard -> edit(caption, keyboard, chatId, messageId) }, markup)
+
     fun edit(
         caption: String,
         markup: InlineKeyboardMarkup? = null,
@@ -161,7 +180,14 @@ data class UpdateContext(
     /**
      * Метод для изменения текущего сообщения
      */
-    @JvmOverloads
+    override fun edit(photoUrl: String?, caption: String?): PhotoReply = edit(photoUrl, caption, null, chatId)
+
+    override fun edit(photoUrl: String?, caption: String?, markup: InlineKeyboardMarkup?): PhotoReply =
+        edit(photoUrl, caption, markup, chatId)
+
+    override fun edit(photoUrl: String?, caption: String?, markup: InlineKeyboardMarkup?, chatId: Long): PhotoReply =
+        PhotoReply(this, PhotoDto(photoUrl, caption, chatId, markup), messageId)
+
     fun edit(
         photoUrl: String?,
         caption: String?,
@@ -175,12 +201,7 @@ data class UpdateContext(
     /**
      * Метод для изменения текущего сообщения
      */
-    fun edit(photo: PhotoDto): Response = edit(
-        caption = photo.caption!!,
-        markup = photo.markup,
-        chatId = photo.chatId,
-        photoUrl = photo.url
-    )
+    override fun edit(photo: PhotoDto): PhotoReply = PhotoReply(this, photo, messageId)
 
     /**
      * Метод для удаления текущего сообщения
@@ -231,9 +252,13 @@ data class UpdateContext(
      * Метод для отправки простого текстового сообщения и добавления его в историю сообщения
      *
      * @param historyKey ключ в истории
-     * @param failAction действие, выполняемое, если такой ключ уже присутствует в истории
      */
-    @JvmOverloads
+    override fun ask(text: String, historyKey: HistoryKey): AskReply = AskReply(this, text, historyKey)
+
+    override fun ask(text: String, historyKey: HistoryKey, markup: InlineKeyboardMarkup?): AskReply =
+        AskReply(this, text, historyKey, markup)
+
+    // Keep the full signature and Kotlin default-argument bridge unchanged.
     fun ask(
         text: String,
         historyKey: HistoryKey,

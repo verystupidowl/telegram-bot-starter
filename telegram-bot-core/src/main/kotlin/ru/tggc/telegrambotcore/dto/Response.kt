@@ -22,11 +22,20 @@ fun interface Response {
     /**
      * Выполнить несколько действий последовательно
      */
-    fun andThen(after: Response): Response =
-        Response {
+    fun andThen(after: Response): Response {
+        if (after is CompletionAwareResponse) {
+            return CompletionAwareResponse { bot ->
+                asyncResponseScope.future {
+                    this@Response.accept(bot).await()
+                    after.accept(bot).await()
+                }
+            }
+        }
+        return Response {
             this.accept(it)
             after.accept(it)
         }
+    }
 
     /**
      * Выполнить action с результатом отправки сообщения
@@ -108,8 +117,8 @@ fun interface Response {
             }
 
         @JvmStatic
-        fun ofAllResponses(responses: List<Response>): Response =
-            Response { bot ->
+        fun ofAllResponses(responses: List<Response>): Response {
+            val execute: (TelegramBot) -> CompletableFuture<BaseResponse?> = { bot ->
                 botResponseScope.future {
                     var result: BaseResponse? = null
                     responses.forEach { response ->
@@ -118,6 +127,8 @@ fun interface Response {
                     result
                 }
             }
+            return if (responses.any { it is CompletionAwareResponse }) CompletionAwareResponse(execute) else Response(execute)
+        }
 
         @JvmStatic
         fun <T> of(consumer: BiConsumer<TelegramBot, T?>, request: T?): Response =

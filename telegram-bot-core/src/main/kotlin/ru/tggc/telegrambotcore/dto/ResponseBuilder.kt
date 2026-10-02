@@ -7,6 +7,7 @@ import com.pengrad.telegrambot.model.request.ParseMode
 import com.pengrad.telegrambot.request.DeleteMessage
 import com.pengrad.telegrambot.request.EditMessageCaption
 import com.pengrad.telegrambot.request.EditMessageMedia
+import com.pengrad.telegrambot.request.EditMessageText
 import com.pengrad.telegrambot.request.SendMessage
 import com.pengrad.telegrambot.request.SendPhoto
 import ru.tggc.telegrambotcore.ext.executeAsync
@@ -66,6 +67,15 @@ class ResponseBuilder internal constructor(private var chatId: Long?) {
             ed.caption(newText)
             markup?.let { ed.replyMarkup(it) }
             bot.executeAsync(ed)
+        }
+    }
+
+    @JvmOverloads
+    fun editText(messageId: Int, text: String, markup: InlineKeyboardMarkup? = null): ResponseBuilder = apply {
+        actions += Response.create { bot ->
+            val edit = EditMessageText(chatId, messageId, text).parseMode(ParseMode.HTML)
+            markup?.let { edit.replyMarkup(it) }
+            bot.executeAsync(edit)
         }
     }
 
